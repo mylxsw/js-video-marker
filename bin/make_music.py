@@ -5,6 +5,7 @@ Usage: python3 make_music.py --dur 44 --bounds 0,6.51,22.91,32.23,44 --out audio
 Sections map to --bounds segments; melodic phrases cycle across them.
 """
 import argparse, wave
+from pathlib import Path
 import numpy as np
 
 SR = 44100
@@ -84,10 +85,12 @@ def main():
     mix[:n_in] *= np.linspace(0, 1, n_in)
     mix[-n_out:] *= np.linspace(1, 0, n_out)
     mix = mix / max(1e-6, np.abs(mix).max()) * 0.89
-    with wave.open(a.out, "wb") as w:
+    out_p = Path(a.out)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(out_p), "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes((mix * 32767).astype(np.int16).tobytes())
-    print("wrote", a.out, "%.1fs" % a.dur)
+    print("wrote", str(out_p), "%.1fs" % a.dur)
 
 if __name__ == "__main__":
     main()

@@ -3,34 +3,46 @@
 Usage: python3 make_mix.py --dir <project> --offsets 0.6,6.51,22.91,32.23 --dur 44
 Reads <dir>/audio/n{i}.mp3 + <dir>/audio/music.wav -> writes <dir>/audio/mix.wav
 """
-import argparse, subprocess, wave
+import argparse, shutil, subprocess, wave
 import numpy as np
 from pathlib import Path
 
 SR = 44100
 
+def check_ffmpeg():
+    if not shutil.which("ffmpeg"):
+        raise SystemExit("Error: ffmpeg is required but not found in PATH. Please install ffmpeg.")
+
 def decode_mp3(p):
+    check_ffmpeg()
     tmp = str(p) + ".tmp.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(p),
-                    "-ar", str(SR), "-ac", "1", tmp], check=True)
-    with wave.open(tmp, "rb") as w:
-        n = w.getnframes()
-        sig = np.frombuffer(w.readframes(n), dtype=np.int16).astype(float) / 32768.0
-    Path(tmp).unlink(missing_ok=True)
+    try:
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(p),
+                        "-ar", str(SR), "-ac", "1", tmp], check=True)
+        with wave.open(tmp, "rb") as w:
+            n = w.getnframes()
+            sig = np.frombuffer(w.readframes(n), dtype=np.int16).astype(float) / 32768.0
+    except subprocess.CalledProcessError as e:
+        raise SystemExit(f"Error: failed to decode audio {p} with ffmpeg: {e}")
+    finally:
+        Path(tmp).unlink(missing_ok=True)
     return sig
 
 def read_wav(p):
-    with wave.open(str(p), "rb") as w:
-        n = w.getnframes()
-        return np.frombuffer(w.readframes(n), dtype=np.int16).astype(float) / 32768.0
+    try:
+        with wave.open(str(p), "rb") as w:
+            n = w.getnframes()
+            return np.frombuffer(w.readframes(n), dtype=np.int16).astype(float) / 32768.0
+    except Exception as e:
+        raise SystemExit(f"Error reading wave file {p}: {e}")
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", required=True)
+    ap.add_argument("--dir", required=True, help="Project directory")
     ap.add_argument("--offsets", required=True, help="comma list matching n1..nN.mp3")
-    ap.add_argument("--dur", type=float, required=True)
+    ap.add_argument("--dur", type=float, required=True, help="Duration in seconds")
     a = ap.parse_args()
-    au = Path(a.dir) / "audio"
+    au = Path(a.dir).resolve() / "audio"
     N = int(a.dur * SR)
     offsets = [float(x) for x in a.offsets.split(",")]
 
@@ -39,7 +51,7 @@ def main():
     for i, off in enumerate(offsets, 1):
         p = au / f"n{i}.mp3"
         if not p.exists():
-            raise SystemExit(f"missing {p}")
+            raise SystemExit(f"Missing voiceover file: {p}\nPlease ensure all narration files (n1.mp3..n{len(offsets)}.mp3) exist.")
         sig = decode_mp3(p)
         s0 = int(off * SR)
         s1 = min(N, s0 + len(sig))
@@ -47,7 +59,11 @@ def main():
         segs.append((off, off + len(sig) / SR))
         print(f"n{i}: offset={off:.2f}s dur={len(sig)/SR:.2f}s")
 
-    music = read_wav(au / "music.wav")
+    music_path = au / "music.wav"
+    if not music_path.exists():
+        raise SystemExit(f"Missing background music file: {music_path}\nPlease generate music first using make_music.py.")
+
+    music = read_wav(music_path)
     music = np.pad(music, (0, max(0, N - len(music))))[:N]
 
     gain = np.ones(N)
@@ -65,6 +81,7 @@ def main():
     mix /= max(1e-6, np.abs(mix).max())
     mix *= 0.89
     outp = au / "mix.wav"
+    outp.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(outp), "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes((mix * 32767).astype(np.int16).tobytes())

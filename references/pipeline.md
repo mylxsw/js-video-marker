@@ -20,9 +20,12 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 ## 配音注意事项
 
 - 必须 **逐句** 生成独立 mp3（`n1.mp3…nN.mp3`），整段生成无法精确测量每句时长。
-- 中文用 `--language zh`；数字、缩写、时间按读音写（"四十二" 而非 "42"）。
+- 中文数字、缩写、时间按读音写（"四十二" 而非 "42"）。
 - TTS 后端输出时长 **每次可能不同**（同文本曾测得 5.11s 与 8.35s 两个版本）。凡重新生成配音，必须重新 `ffprobe` 测量并重锁时间轴。
-- 音色：默认 `avocado_v2:MAI_03`（Smooth）。换音色只在用户明确要求时。
+- 音色与引擎：使用 `bin/tts.py` 支持多种后端：
+  - `edge-tts`：推荐（微软高品质神经网络语音，如 `zh-CN-XiaoxiaoNeural`、`zh-CN-YunxiNeural`）。
+  - macOS `say`：macOS 系统自带离线语音（默认中文 `Tingting`，无需额外安装 pip 包）。
+  - 可指定 `--voice <name>` 参数进行切换。
 
 ## 配乐说明
 
@@ -30,14 +33,15 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 
 ## 混音说明
 
-`make_mix.py`：解说按偏移摆位；配乐在每段解说前后各留 0.3s/0.4s，用余弦包络压到 0.32（ducking），解说电平优先。输出 44.1kHz 单声道 16-bit。
+`make_mix.py`：解说按偏移摆位；配乐在每段解说前后各留 0.3s/0.4s，用余弦包络压到 0.32（ducking），解说电平优先。输出 44.1kHz 单声道 16-bit。会自动检查背景音乐与解说音频完整性。
 
 ## 渲染说明
 
 - `render.mjs <dir> snaps`：默认在全片均匀取 16 帧；`--snaps` 可指定关键时间点，质检时优先取「转场点 ±0.3s」和「字幕切换点」。
 - `render.mjs <dir> video`：30fps 逐帧截图 → 管道喂给 ffmpeg（libx264 crf 18）。44s 约 1320 帧，耗时约 10–20 分钟（主要花在截图 IPC）。可开 `--fps 24` 提速，肉眼差别不大。
-- Chrome 路径：默认 `/opt/meta-chromium/chrome`，可用环境变量 `VM_CHROME` 覆盖。
-- 页面必须走 `file://` 协议。曾因 `http.server` 被 Chrome 网络拦截而改用 `file://`——不要走回头路。
+- Chrome 路径：内置跨平台自动探测机制（支持 macOS Chrome/Edge、Linux chrome/chromium、Windows 等）。亦可使用环境变量 `VM_CHROME` 显式覆盖。
+- 端口与资源：默认优先使用 9222 端口，若被占用会自动寻找可用空闲端口；退出或中断时会自动清理临时用户数据目录与 Chrome 进程。
+- 页面必须走 `file://` 协议。使用 `pathToFileURL` 保证跨平台路径正确解析为标准 URL。
 
 ## 质检清单（看抽帧图时逐项过）
 
@@ -62,21 +66,36 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 
 ## 渲染器健壮性
 
-- `render.mjs` 启动 Chrome 后最多等待 30s 直到 `:9222` 的 DevTools 端点就绪（冷启动慢）。
-- 每次运行使用独立 `--user-data-dir`（`/tmp/vm-chrome-<pid>`），避免 profile 锁冲突。
-- 若报 `ECONNREFUSED`，检查是否有僵尸 Chrome 占用 9222（`pgrep -f remote-debugging-port=9222`，注意 pgrep 会匹配到自身命令行）。
+- `render.mjs` 启动 Chrome 后最多等待 30s 直到 DevTools 端点就绪（冷启动慢）。
+- 每次运行使用独立临时 `--user-data-dir`，进程退出、崩溃或中断信号时自动清理。
+- 端口冲突时自动寻找可用端口，避免 `ECONNREFUSED` 或冲突。
 
 ## 复刻新视频的最简命令序列
 
 ```sh
+# 设 SKILL_DIR 为本技能代码所在绝对路径
+SKILL_DIR="/path/to/video-maker"
 D=~/projects/my-video
-node ~/workspace/skills/video-maker/bin/new-video.mjs $D --title "标题"
-cd $D && $EDITOR script.txt
-for i in 1 2 3 4; do :; done  # 按 SKILL.md 步骤 2 逐句 tts
-# …填 demo.js 时间轴 + beat 函数…
-python3 ~/workspace/skills/video-maker/bin/make_music.py --dur $DUR --bounds 0,…,$DUR --out $D/audio/music.wav
-node ~/workspace/skills/video-maker/bin/render.mjs $D snaps   # 看图修 bug，循环
-python3 ~/workspace/skills/video-maker/bin/make_mix.py --dir $D --offsets … --dur $DUR
-node ~/workspace/skills/video-maker/bin/render.mjs $D video
-ffmpeg -y -i $D/out/video.mp4 -i $D/audio/mix.wav -c:v copy -c:a aac -b:a 160k $D/out/final.mp4
+
+node "$SKILL_DIR/bin/new-video.mjs" "$D" --title "标题"
+cd "$D" && $EDITOR script.txt
+
+# 逐句生成配音并测时长（可使用 bin/tts.py）
+python3 "$SKILL_DIR/bin/tts.py" --text "第一句解说词。" --out audio/n1.mp3
+ffprobe -v error -show_entries format=duration -of csv=p=0 audio/n1.mp3
+
+# …根据公式填 demo.js 时间轴与 BEAT 函数…
+
+# 生成配乐
+python3 "$SKILL_DIR/bin/make_music.py" --dur $DUR --bounds 0,…,$DUR --out audio/music.wav
+
+# 抽帧质检（看图修 bug）
+./run.sh snaps  # 或 node "$SKILL_DIR/bin/render.mjs" . snaps
+
+# 混音
+./run.sh mix --offsets 0.6,… --dur $DUR
+
+# 渲染与合成
+./run.sh video
+./run.sh mux
 ```
