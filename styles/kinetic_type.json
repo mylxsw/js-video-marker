@@ -1,0 +1,16 @@
+{
+  "id": "kinetic_type",
+  "name": "动感字体",
+  "design": "全屏强对比文字与几何色块，快切、缩放和方向变化；不用面板与卡片。",
+  "useFor": "短观点、宣言、节奏强的社交视频",
+  "theme": {
+    "extends": "minimal_dark", "id": "kinetic_type",
+    "colors": { "bg1": "#141316", "bg2": "#1e1b1a", "bg3": "#191411", "primary": "#ffb703", "accent": "#fb5607", "secondary": "#ffdf8a", "textPrimary": "#fff7e7", "textSecondary": "#ffe0ad", "surface": "#2a211c", "glow": "rgba(251,86,7,0.15)" },
+    "background": { "type": "clean", "particles": 0, "vignette": false }
+  },
+  "scene": { "family": "kinetic", "font": "heavy", "accent": "shapes" },
+  "motion": { "entry": "snap", "enterSeconds": 0.18, "exitSeconds": 0.16 },
+  "chrome": { "hud": "none" },
+  "captions": { "maxWidth": 1660, "bottomY": 980, "lineGap": 65, "colors": ["#fff7e7", "#ffdf8a"], "outline": "rgba(20,16,14,0.9)", "shadow": "rgba(0,0,0,0.7)" },
+  "audio": { "source": "generated", "genre": "tech_pulse", "bpm": 118, "mix": { "musicLevel": 0.78, "duckLevel": 0.24 } }
+}

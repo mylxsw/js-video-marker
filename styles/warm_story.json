@@ -1,0 +1,16 @@
+{
+  "id": "warm_story",
+  "name": "温暖叙事",
+  "design": "暖纸色与柔和圆形插画，场景从一侧滑入，像绘本故事而非信息面板。",
+  "useFor": "生活故事、心理健康、教育和温和的人物叙事",
+  "theme": {
+    "extends": "academic_paper", "id": "warm_story",
+    "colors": { "bg1": "#faeee3", "bg2": "#f7e6d7", "bg3": "#f2dccb", "primary": "#365c4c", "accent": "#e67e5f", "secondary": "#8b705b", "surface": "#fff5eb", "textPrimary": "#263b32", "textSecondary": "#5f5b50" },
+    "background": { "type": "clean", "particles": 0, "vignette": false }
+  },
+  "scene": { "family": "story", "font": "sans", "accent": "illustration" },
+  "motion": { "entry": "float", "enterSeconds": 0.72, "exitSeconds": 0.4 },
+  "chrome": { "hud": "none" },
+  "captions": { "maxWidth": 1700, "bottomY": 980, "lineGap": 65, "colors": ["#263b32", "#5f5b50"], "outline": "rgba(255,246,236,0.95)", "shadow": "rgba(255,246,236,0.65)" },
+  "audio": { "source": "generated", "genre": "ambient", "bpm": 72 }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "academic_paper",
+  "name": "学术白板",
+  "design": "白纸、墨线、注解与推导步骤，让观点像在纸面上被逐层解释。",
+  "useFor": "论文、知识科普、数学与逻辑",
+  "theme": "academic_paper",
+  "scene": { "family": "whiteboard", "font": "sans", "accent": "annotation" },
+  "motion": { "entry": "write", "enterSeconds": 0.55, "exitSeconds": 0.3 },
+  "chrome": { "hud": "none" },
+  "captions": { "maxWidth": 1700, "bottomY": 980, "lineGap": 65, "colors": ["#0f172a", "#334155"], "outline": "rgba(255,255,255,0.9)", "shadow": "rgba(255,255,255,0.65)" },
+  "audio": { "source": "generated", "genre": "minimal_piano", "bpm": 88 }
+}

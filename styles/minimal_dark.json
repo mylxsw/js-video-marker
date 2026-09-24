@@ -1,0 +1,12 @@
+{
+  "id": "minimal_dark",
+  "name": "深色知识卡片",
+  "design": "克制的深色知识图解，重点放在概念关系与清晰层级。",
+  "useFor": "抽象观点、思维模型、解释性内容",
+  "theme": "minimal_dark",
+  "scene": { "family": "cards", "font": "sans", "accent": "line" },
+  "motion": { "entry": "slide", "enterSeconds": 0.42, "exitSeconds": 0.32 },
+  "chrome": { "hud": "none" },
+  "captions": { "maxWidth": 1700, "bottomY": 980, "lineGap": 65, "colors": ["#f9fbff", "#d9eaff"], "outline": "rgba(3,8,18,0.82)", "shadow": "rgba(0,0,0,0.72)" },
+  "audio": { "source": "generated", "genre": "lofi", "bpm": 82 }
+}

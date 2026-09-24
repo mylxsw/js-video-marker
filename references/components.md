@@ -1,7 +1,8 @@
 # V.* 组件库与多主题系统 API（lib/anim.js）
 
-浏览器全局 `V` 与 `Themes`。
-工作流：先 `V.mount(document.getElementById('c'))`，并根据所选风格调用 `V.setTheme('minimal_dark')`，然后在各 beat 函数里调用组件进行绘制。
+浏览器全局 `V`、`Themes` 与 `SceneStyles`。新项目通过 `style.js` 的 `VIDEO_STYLE` 统一设置视觉、动效、字幕和音乐；用 `SceneStyles.draw(scene,u,t,VIDEO_STYLE)` 绘制语义场景。旧项目仍可直接调用 `V.setTheme` 与各 `V.*` 组件。
+
+风格包结构、场景协议与扩展方式见 [styles.md](styles.md)。
 
 约定：`u` = 本幕内相对时间（每幕开始为 0），`t` = 全局时间戳。所有组件绘制必须保持为时间的**纯函数**——不要在 beat 函数内保存可变状态。
 
@@ -9,13 +10,13 @@
 
 ## 主题系统（Themes & V.T）
 
-### 内置主题预设
-库中内置了 5 大经过高保真设计调优的预设：
-1. `minimal_dark`: 深邃知识探索（Notion / Linear 风格），微光深蓝黑，适合思维认知、个人成长与哲学反思。默认配乐：`lofi`。
-2. `tech_blueprint`: 工程师蓝图，深蓝网格拓扑、数据流发光线条，适合架构、开发与系统设计。默认配乐：`tech_pulse`。
-3. `modern_business`: 现代科技轻商务，高级深灰紫、财富绿微透质感，适合商业财经与产品战略。默认配乐：`ambient`。
-4. `academic_paper`: 极简学术白板，沉稳低饱和暖白纸面、墨黑线条、荧光马克笔重点，适合论文解析与数学逻辑。默认配乐：`minimal_piano`。
-5. `retro_rpg`: 像素极客冒险，赛博网格、CRT 扫描线、经验条与金币，适合游戏化机制与突破挑战。默认配乐：`chiptune`。
+### 底层主题预设
+`Themes` 保留 5 套调色、背景与字体配置，供旧项目与新风格包继承。它们本身不决定新项目的构图或配乐；完整视频风格应选 `styles/<id>.json`。
+1. `minimal_dark`: 深色微光与点阵。
+2. `tech_blueprint`: 深蓝网格与电青连线。
+3. `modern_business`: 深灰紫与翡翠绿。
+4. `academic_paper`: 浅色纸面与墨黑文字。
+5. `retro_rpg`: 赛博网格与扫描线。
 
 ### 主题 API
 | API | 说明 |
@@ -40,12 +41,10 @@ V.setTheme({
     type: 'mesh',
     particles: 40,
   },
-  music: {
-    genre: 'tech_pulse',
-    bpm: 128
-  }
 });
 ```
+
+新项目的音乐单独配置在 `VIDEO_STYLE.audio`，不会由 `V.setTheme` 设置。
 
 ---
 
@@ -82,7 +81,9 @@ V.setTheme({
 | `V.bg(t, opts)` | 主题感知背景。根据当前主题渲染 `dots`（点阵）、`blueprint`（工程网格）、`retro_grid`（滚动网格）、`mesh`（有机渐变呼吸微光）或 `clean`（纯净纸面），附带浮动微粒与暗角 |
 | `V.scanlines(force)` | CRT 扫描线（主题指定开启，或传入 force=true 强制启用） |
 | `V.hud(t, label)` | 主题 HUD：支持 `pill`（胶囊微标）与 `minimal`（极简代码）风格 |
-| `V.drawSubs(t, subs, show)` | 底部字幕条。根据主题自动调整圆角、半透磨砂底色与描边 |
+| `V.drawSubs(t, subs, show)` | 底部逐句字幕。默认无背景框，使用轻描边和阴影保证可读性；单语一行、双语上下两行 |
+
+字幕数据示例：`[12.30, 14.75, '当前读到的一句']`；双语为 `[12.30, 14.75, ['主语言短句', '对应译文']]`。也支持 `{lines: [...]}` 和旧数据 `{en, zh}`。字幕只显示当前条目；语言和上下顺序按本片需求填写。样式优先读 `style.js.captions`，也可通过 `V.createApp({captions: {...}})` 针对本片覆盖；旧项目继续读 `ui.subtitles.captionColors` 等主题字段。
 | `V.toast(str,cx,cy,k,color)` | 浮动状态横幅（如 "SYSTEM UPDATED"），k 为 0→1 包络 |
 
 ---
@@ -151,16 +152,20 @@ V.setTheme({
 
 ## App 接线（createApp）
 
+新项目：
+
 ```js
 V.createApp({
-  theme: 'minimal_dark', // 内置主题名或自定义配置对象
+  style: VIDEO_STYLE,
   dur: DUR,
   beats: BEATS,
   subs: SUBS,
-  label: '◉ 思考者的重构手记',
-  drawBeat: (i, u, t) => BEAT_FN[i](u, t),
+  label: '视频标题',
+  drawBeat: (i, u, t) => SceneStyles.draw(SCENES[i], u, t, VIDEO_STYLE),
 });
 ```
+
+旧项目继续支持 `theme` 和自定义 `drawBeat`；无需迁移已有 `demo.js`。
 
 - `?render=1`：锁定 1920×1080 离屏渲染模式，暴露 `window.__frame(t)` 供 Chromium 逐帧捕获。
 - 默认预览模式：提供播放/暂停、精准拖拽时间轴、毫秒级时间码展示、字幕切换与空格控制，`#bgm` 音频严格跟随。

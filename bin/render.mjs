@@ -261,11 +261,18 @@ async function main() {
     const targetUrl = pathToFileURL(indexPath).href + `?render=1&w=${TARGET_W}&h=${TARGET_H}&res=${encodeURIComponent(args.res || args.resolution || '')}`;
     await send('Page.navigate', { url: targetUrl });
 
+    let pageReady = false;
     for (let i = 0; i < 100; i++) {
-      const r = await send('Runtime.evaluate', { expression: 'window.__ready === true' });
-      if (r.result && r.result.value) break;
+      const r = await send('Runtime.evaluate', {
+        expression: `window.__ready === true && (
+          typeof VIDEO_STYLE === 'undefined' || VIDEO_STYLE.characters?.render !== 'sprite' ||
+          (typeof CharacterActors !== 'undefined' && CharacterActors.ready())
+        )`
+      });
+      if (r.result && r.result.value) { pageReady = true; break; }
       await sleep(200);
     }
+    if (!pageReady) throw new Error('Video page or required character sprite did not finish loading');
 
     const shot = async (t) => {
       await send('Runtime.evaluate', { expression: `window.__frame(${t})` });
@@ -286,7 +293,8 @@ async function main() {
         expression: `JSON.stringify({
           beats: window.__BEATS || [],
           subs: window.__SUBS || [],
-          theme: (typeof V !== 'undefined' && V.theme) ? (V.theme.name || V.theme.id) : '',
+          theme: (typeof VIDEO_STYLE !== 'undefined' && VIDEO_STYLE.name)
+            || ((typeof V !== 'undefined' && V.theme) ? (V.theme.name || V.theme.id) : ''),
           title: document.title || ''
         })`,
         returnByValue: true
@@ -326,7 +334,12 @@ async function main() {
 
         // Find corresponding subtitle
         const sub = (pageData.subs || []).find(subItem => t >= subItem[0] && t < subItem[1]);
-        const subText = sub ? sub[2] : '';
+        const rawSub = sub ? sub[2] : '';
+        const subText = typeof rawSub === 'string' ? rawSub
+          : Array.isArray(rawSub) ? rawSub.join(' / ')
+          : Array.isArray(rawSub?.lines) ? rawSub.lines.join(' / ')
+          : rawSub && typeof rawSub === 'object' ? [rawSub.en, rawSub.zh].filter(Boolean).join(' / ')
+          : '';
 
         manifest.acts.push({
           act: i + 1,

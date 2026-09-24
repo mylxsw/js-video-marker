@@ -41,7 +41,11 @@ def main():
     ap.add_argument("--dir", required=True, help="Project directory")
     ap.add_argument("--offsets", required=True, help="comma list matching n1..nN.mp3")
     ap.add_argument("--dur", type=float, required=True, help="Duration in seconds")
+    ap.add_argument("--music-level", type=float, default=0.9, help="Music level before narration ducking (default 0.9)")
+    ap.add_argument("--duck-level", type=float, default=0.32, help="Music multiplier under narration (default 0.32)")
     a = ap.parse_args()
+    if not 0 <= a.music_level <= 1 or not 0 <= a.duck_level <= 1:
+        ap.error("music-level and duck-level must be between 0 and 1")
     au = Path(a.dir).resolve() / "audio"
     N = int(a.dur * SR)
     offsets = [float(x) for x in a.offsets.split(",")]
@@ -70,14 +74,14 @@ def main():
     ramp = int(0.3 * SR)
     for sa, sb in segs:
         i0 = max(0, int((sa - 0.3) * SR)); i1 = min(N, int((sb + 0.4) * SR))
-        dip = np.ones(i1 - i0) * 0.32
+        dip = np.ones(i1 - i0) * a.duck_level
         r = min(ramp, (i1 - i0) // 2)
         t = np.linspace(0, np.pi / 2, r)
-        dip[:r] = 1 - 0.68 * np.sin(t) ** 2
-        dip[-r:] = 0.32 + 0.68 * np.sin(t) ** 2
+        dip[:r] = 1 - (1 - a.duck_level) * np.sin(t) ** 2
+        dip[-r:] = a.duck_level + (1 - a.duck_level) * np.sin(t) ** 2
         gain[i0:i1] = np.minimum(gain[i0:i1], dip)
 
-    mix = narr + music * 0.9 * gain
+    mix = narr + music * a.music_level * gain
     mix /= max(1e-6, np.abs(mix).max())
     mix *= 0.89
     outp = au / "mix.wav"

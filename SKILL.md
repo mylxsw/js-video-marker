@@ -1,15 +1,16 @@
 ---
 name: "video-maker"
-description: "Agent-driven pipeline that transforms any article or text into a professional animated explainer video: automatic content analysis & multi-style visual/music recommendation, storyboard keyframe image generation & interactive user review before full video rendering, per-line TTS voiceover, procedural multi-genre music synthesis, code-driven canvas animations via V.* components, headless-Chromium rendering, and audio/video muxing. Use when the user provides an article, text, or script to create an explainer video, or asks for the video toolkit."
+description: "Create or revise animated explainer videos from articles, text, or scripts with independent, extensible visual styles. Covers style selection, scene design, narration, speech-aligned captions, music, storyboard review, and rendering. Use when making videos or extending the video-maker toolkit."
 ---
 
-# Video Maker · 分镜先行与多风格自适应视频管线
+# Video Maker · 可扩展多风格视频框架
 
 ## 核心设计理念
-本管线将任意文章或文本转化为**高质量解说动画视频（30–90秒）**。
-核心原则：**分镜图片先行，确认满意后再全量渲染**。
+本框架将文章或脚本转化为解说动画视频。核心原则：**内容、风格、字幕、配乐分离；先核对旁白与画面的意思，再确认分镜和全量渲染**。
 
-在耗费较多时间进行逐帧全量视频渲染之前，管线会先在秒级（~2秒）内自动生成**全套分镜效果图（Storyboard Keyframes）**，让用户直观预览每一幕的画面排版、配色对比、图表和字幕。用户可以随时提出修改意见并即时刷新，待用户最终确认满意后，才执行全量视频渲染与合成。
+每套风格在 `styles/<id>.json` 中独立定义设计理念、画面家族、入退场动效、顶部界面元素、字幕和配乐。`lib/scenes.js` 根据同一份语义场景数据绘制不同构图。新项目复制一份可编辑的 `style.js`，不会因日后改动预设而悄悄改变旧项目。已有 `V.*` 组件与旧项目接口继续可用。扩展新风格时读 [references/styles.md](references/styles.md)。
+
+在耗费较多时间进行逐帧全量视频渲染之前，先生成**分镜效果图（Storyboard Keyframes）**，让用户预览每一幕的排版、配色、图表和字幕。按反馈修改，确认视觉方案后再全量渲染。字幕应在分镜预览前就按实际配音切成短句，不能把一幕的全部文案塞进一屏。
 
 > [!TIP]
 > **环境检查：** 首次使用或排查问题时，可运行 `node <skill-dir>/bin/doctor.mjs` 自检当前系统环境与依赖。`<skill-dir>` 为本技能所在的根目录。
@@ -25,13 +26,9 @@ description: "Agent-driven pipeline that transforms any article or text into a p
 1. **内容特征分析：**
    - **题材调性**：个人成长与哲学认知、系统架构与编程实战、商业战略与产品财经、论文解析与数理逻辑、极客突破等。
    - **核心视觉隐喻**：左右对比分栏（认知误区 vs 核心重构）、关键数据冲击（10x / 92%）、流程步骤（01 → 02 → 03）、概念拓扑（因果回路）、深度名言金句。
-2. **给出 2–3 种推荐风格候选（并支持自动生成全新风格）：**
-   - `minimal_dark`（深邃知识探索）：Notion / Linear 质感，深蓝黑微光底色，柔和天蓝与微粒浮动，搭配 `lofi` 慢摇配乐。
-   - `tech_blueprint`（工程师蓝图）：普鲁士深蓝网格拓扑、亮电青发光连线，搭配 `tech_pulse` 科技脉冲配乐。
-   - `modern_business`（现代科技轻商务）：高级深灰紫与翡翠绿微透质感，搭配 `ambient` 氛围音。
-   - `academic_paper`（极简学术白板）：沉稳低饱和暖白纸面、墨黑线条、荧光马克笔重点，搭配 `minimal_piano` 极简钢琴。
-   - `retro_rpg`（像素极客冒险）：经典赛博网格、CRT 扫描线、经验条与金币，搭配 `chiptune` 8-bit 配乐。
-3. **与用户确认风格后进入第二阶段。**
+2. **给出 2–3 种画面结构真正不同的候选，而不只换色：** 运行 `node <skill-dir>/bin/style-config.mjs list` 查看风格包。当前有 `minimal_dark`（知识卡片）、`tech_blueprint`（工程图）、`modern_business`（商业简报）、`academic_paper`（学术白板）、`retro_rpg`（游戏任务）、`editorial_ink`（杂志排版）、`kinetic_type`（动感字体）、`warm_story`（温暖叙事）、`comic_duo`（双人黑白漫画）。按题材推荐，不总把深色科技风放在第一位。漫画风的角色与分镜用法见 [references/comic-duo.md](references/comic-duo.md)。
+3. **确认本片的语言选择：** 主动画面文字、解说语言与音色、字幕语言（单语或双语）分别询问；已有明确要求就沿用，不重复追问。不要把某次视频的英文解说或中英双语字幕写成所有项目的默认语言。
+4. **与用户确认风格后进入第二阶段。**
 
 ---
 
@@ -41,18 +38,18 @@ description: "Agent-driven pipeline that transforms any article or text into a p
 
 1. **脚手架与文案提取：**
    ```sh
-   node <skill-dir>/bin/new-video.mjs <dir> --title "视频标题" --theme <theme_id> [--dur 44]
+   node <skill-dir>/bin/new-video.mjs <dir> --title "视频标题" --style <style_id> [--dur 44]
    ```
-   在 `<dir>/script.txt` 中编写 4–8 句口语化解说词（`n1: ...`），数字与缩写按发音展开。
-2. **逐句配音与实测时间轴：**
+   在 `<dir>/script.txt` 中编写口语化解说词。`n1…nN` 是配音文件/分镜单位，不等于字幕单位。`<dir>/style.js` 是该视频的独立风格配置，可单独调整画面家族、动效、字幕和音乐。
+2. **分段配音与实测时间轴：**
    ```sh
    # 自动使用 Fish Audio API（读取 FISH_API_KEY 环境变量，或回退至 edge-tts / macOS say）
    python3 <skill-dir>/bin/tts.py --text "第一句解说词。" --out <dir>/audio/n1.mp3
    ffprobe -v error -show_entries format=duration -of csv=p=0 <dir>/audio/n1.mp3
    ```
-   计算并严格锁定时间轴（`o1 = 0.6`, `o(i+1) = o(i) + d(i) + 0.8`, `DUR = oN + dN + 2.5`），写入 `demo.js` 的 `DUR`、`BEATS`、`SUBS`。
-3. **分镜动效排版（Drafting Beats）：**
-   在 `demo.js` 中使用 `V.*` 知识可视化组件库（`compareView`、`metricCard`、`stepList`、`quoteCard`、`nodeGraph`、`panel`、`card` 等）实现各幕画面。
+   计算并锁定分镜与配音时间轴（`o1 = 0.6`, `o(i+1) = o(i) + d(i) + 0.8`, `DUR = oN + dN + 2.5`），写入 `demo.js` 的 `DUR`、`BEATS`。再依据**最终配音的词/句时间戳**生成独立的 `SUBS`：一句或一个自然停顿对应一条字幕；长句可拆成连续、语义完整的短语。每条字幕只含当前说到的内容，单语一行，双语最多两行。优先使用当前 TTS 提供的时间戳或可靠的语音对齐/转写；人工听校转场、专有名词和片尾。只有无法取得更细时间戳时，才按音频波形与试听手动标注，不按整段平均语速均分。细节见 [references/pipeline.md](references/pipeline.md)。
+3. **先写分镜意图，再绘制（Drafting Beats）：**
+   逐幕填写项目 `STORYBOARD.md`：旁白原句与时间、要表达的意思、画面变化、人物与物件的关系、画面短标签、不能暗示的额外结论。按 [references/storyboard-quality.md](references/storyboard-quality.md) 核对。再在 `demo.js` 的 `SCENES` 中写语义内容（`statement`、`contrast`、`steps`、`quote`）；`SceneStyles.draw` 会按选定风格绘制。需要某套风格的新构图时，为其新增场景家族或注册自定义绘制函数，不要把所有项目都套进卡片/终端组件。通用 `V.*` 组件仍可用于局部定制。
 4. **生成全套分镜效果图（Storyboard）：**
    ```sh
    node <skill-dir>/bin/render.mjs <dir> storyboard
@@ -60,7 +57,7 @@ description: "Agent-driven pipeline that transforms any article or text into a p
    ```
    2 秒内自动分析所有幕的起止区间，捕获各幕高潮画面的高清截图至 `<dir>/out/storyboard/act_*.png`，并生成预览画廊网页 `<dir>/out/storyboard/index.html`。
 5. **向用户展示分镜效果并征询反馈：**
-   - 提取生成的各幕关键帧图片（`act_1.png`, `act_2.png`, ...），向用户展示每幕的画面预览、对应解说词与视觉重点；
+   - 提取生成的各幕关键帧图片（`act_1.png`, `act_2.png`, ...），向用户展示每幕的画面预览、对应解说词与视觉重点；对照 `STORYBOARD.md` 检查画面有没有说偏、提前剧透或增加结论。另抽查每幕进入后、关键词处、结束前、最长字幕和相邻字幕切换点。
    - 征询用户反馈：“请查看以上分镜效果图。您可以提出任何调整建议（如更换配色、调整元素大小、重排版式、替换隐喻等）。”
    - 若用户提出修改需求：修改 `demo.js` 后重新运行 `./run.sh storyboard`，秒级呈现新效果图，直到用户满意。
    - **获得用户明确确认（“效果满意，开始生成”）后，再启动第三阶段。**
@@ -71,8 +68,8 @@ description: "Agent-driven pipeline that transforms any article or text into a p
 
 1. **配乐与智能混音：**
    ```sh
-   python3 <skill-dir>/bin/make_music.py --dur DUR --bounds 0,o2,...,DUR --genre <genre> --out <dir>/audio/music.wav
-   python3 <skill-dir>/bin/make_mix.py --dir <dir> --offsets o1,o2,... --dur DUR
+   node <skill-dir>/bin/make-style-music.mjs <dir> --dur DUR --bounds 0,o2,...,DUR
+   node <skill-dir>/bin/make-style-mix.mjs <dir> --offsets o1,o2,... --dur DUR
    # 或在项目目录下运行: ./run.sh music && ./run.sh mix
    ```
 2. **全量视频逐帧渲染：**
@@ -92,6 +89,10 @@ description: "Agent-driven pipeline that transforms any article or text into a p
 
 ## 交付物与质量守则
 1. **分镜必审**：禁止直接跨过分镜直接渲染全量视频。先出图片，确认满意再跑视频。
-2. **时间轴必测**：绝不猜时长，严格通过 `ffprobe` 测量配音。
-3. **字体与间距**：CJK 标题间距 `gap >= px + 14`；文字必须使用 `wrapCN` 控制在容器边界内。
-4. **渲染环境与画质**：逻辑坐标统一为 1920×1080，支持 `--res 4k` 自动进行 Canvas 2D 与矢量字体的高精细光栅化放大，零模糊；零外部 webfont 依赖。
+2. **字幕独立配置**：逐句对齐与不叠长段落是通用质量要求；字号、颜色、描边、位置、行距由 `style.js.captions` 独立配置。当前预设默认无背景框，单语一行、双语最多两行。用户指定其他样式时以用户要求为准。
+3. **时间轴必测**：用 `ffprobe` 测量配音时长，再用最终音频的词/句时间戳校准每条字幕。重新生成配音后，重做字幕对齐。
+4. **字体与间距**：CJK 标题间距 `gap >= px + 14`；画面正文用 `wrapCN` 控制在容器边界内；字幕按可读宽度检查并拆句。
+5. **成片必检**：抽查开头、中段、结尾、最长字幕和快切处；检查文字溢出、字幕与声音同步、音画完整性。需要外置字幕时，从同一份时间轴导出 SRT。
+6. **风格必检**：比较候选风格的分镜时，要看构图、字体、动效、界面元素和配乐是否真的不同；不把换色当作新风格。画面应服从内容，而非为了展示组件而加卡片、时间码或游戏元素。
+7. **渲染环境与画质**：逻辑坐标统一为 1920×1080，支持 `--res 4k` 自动进行 Canvas 2D 与矢量字体的高精细光栅化放大，零外部 webfont 依赖。
+8. **调试结果回收**：短段样片发现的通用问题，修到对应风格素材、运行时代码或本 skill 的检查协议；文章专属隐喻留在项目中。避免下一支视频重复试错。

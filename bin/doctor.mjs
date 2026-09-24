@@ -5,6 +5,8 @@
 import { execSync, spawnSync } from 'node:child_process';
 import { platform } from 'node:os';
 import { findChrome } from './render.mjs';
+import { findPythonWithNumpy } from './python-env.mjs';
+import { listStyles } from './style-config.mjs';
 
 function ok(msg) { console.log(`  \x1b[32m✔\x1b[0m ${msg}`); }
 function warn(msg) { console.log(`  \x1b[33m▲\x1b[0m ${msg}`); }
@@ -62,23 +64,19 @@ try {
   allOk = false;
 }
 
-// 4. Python 3 & numpy
-try {
-  const pyVer = execSync('python3 --version', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  ok(`Python 3: ${pyVer}`);
-  try {
-    execSync('python3 -c "import numpy; print(numpy.__version__)"', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    ok('Python numpy: 已安装');
-  } catch {
-    fail('Python numpy 未安装。请运行: pip3 install numpy');
-    allOk = false;
-  }
-} catch {
-  fail('Python 3 未找到。请安装 Python 3');
+// 4. Python 3 & numpy (same interpreter selection as music generation)
+const musicPython = findPythonWithNumpy();
+if (musicPython) ok(`Python + numpy: ${musicPython}`);
+else {
+  fail('未找到带 numpy 的 Python。安装 numpy 后可设置 VIDEO_MAKER_PYTHON');
   allOk = false;
 }
 
-// 5. TTS 引擎检测
+// 5. Style packages
+try { ok(`视频风格包: ${listStyles().length} 套配置有效`); }
+catch (e) { fail(`风格包无效: ${e.message}`); allOk = false; }
+
+// 6. TTS 引擎检测
 let ttsAvailable = false;
 const fishKey = process.env.FISH_API_KEY || process.env.FISH_AUDIO_API_KEY;
 if (fishKey) {

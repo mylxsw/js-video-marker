@@ -1,68 +1,52 @@
 'use strict';
-/* {{TITLE}} — video-maker project.
-   Theme: {{THEME}}
-   Fill in: 1) BEATS + SUBS from measured TTS durations (see SKILL.md step 3),
-            2) one beat function per act using V.* components.
-   render(t) must stay a pure function of t. */
+/* Semantic scenes rendered by the {{STYLE}} style package.
+   Replace sample content, then lock BEATS to measured voice durations and SUBS to
+   word/phrase times from the final narration. The selected languages are per-project. */
 
-const DUR = {{DUR}}; // total seconds; render.mjs parses this line
+const DUR = {{DUR}}; // total seconds; render.mjs reads this line
 
-// --- timeline: [start, end] per beat, derived from TTS durations + 0.8s pads
-//     narration offsets: first line at 0.6s, each next line at prev beat start + prev dur + 0.8
-const BEATS = [
-  [0.0, 5.0],
-  [5.0, 12.0],
+// These three sample beats are only a preview. Replace with measured narration offsets.
+const BEATS = [[0, DUR / 3], [DUR / 3, DUR * 2 / 3], [DUR * 2 / 3, DUR]];
+
+// One short spoken phrase per item. Use [start, end, 'line'] or
+// [start, end, ['primary line', 'translation']] for bilingual captions.
+const SUBS = [
+  [0.6, DUR * 0.16, '第一条短字幕。'],
+  [DUR * 0.16, DUR * 0.3, '第二条短字幕。'],
+  [DUR / 3 + 0.3, DUR * 0.6, '第三条短字幕。'],
+  [DUR * 2 / 3 + 0.3, DUR - 1.5, '第四条短字幕。'],
 ];
 
-// --- subtitles: [start, end, text] — keep inside the narration window
-const SUBS = [
-  [0.6, 4.2, '这是第一句解说词示例。'],
-  [5.6, 11.2, '这是第二句解说词示例。'],
+// Semantic content stays the same when previewing different styles.
+// type: statement | contrast | steps | quote. Styles decide layout and movement.
+const SCENES = [
+  {
+    type: 'statement', kicker: '01 / 核心观点',
+    title: '在这里写下核心观点',
+    body: '用一句口语化的话解释它为什么重要。',
+    items: ['问题', '洞察', '行动'],
+  },
+  {
+    type: 'contrast', kicker: '02 / 对比', title: '两种不同的选择',
+    left: { title: '旧方法', body: '这里描述旧方法的局限。' },
+    right: { title: '新方法', body: '这里描述更好的方向。' },
+  },
+  {
+    type: 'steps', kicker: '03 / 行动', title: '接下来可以怎么做',
+    items: [
+      { title: '先看清问题', body: '找到真正的阻力。' },
+      { title: '再做小实验', body: '用行动验证判断。' },
+      { title: '最后调整路径', body: '保留有效的做法。' },
+    ],
+  },
 ];
 
 V.mount(document.getElementById('c'));
-V.setTheme('{{THEME}}');
-
-// ---------------------------------------------------------------- beats
-// u = beat-local time (0 at beat start), t = global time. Use V.seg/V.tw/V.mv.
-
-function beat1(u, t) {
-  // Example Act 1: Impact title + key metric
-  V.titlePop('示例主标题', 960, 360, u, 0.4);
-  V.typewriter('TRANSFORM YOUR THINKING', 960, 480, u, 1.4, 2.8);
-  V.metricCard(960, 720, 520, 220, {
-    value: '1 DAY',
-    label: 'EXECUTION TIMEFRAME',
-    desc: '从混乱到秩序的最小重构周期',
-    u,
-    t0: 2.0,
-  });
-}
-
-function beat2(u, t) {
-  // Example Act 2: Comparison (Old Way vs New Way)
-  V.compareView(960, 520, 1400, 580, u, {
-    title: '表面努力',
-    subtitle: 'STATUS GAMES',
-    items: ['随波逐流立新年目标', '依赖靠不住的即时意志力', '目标过多导致注意力涣散'],
-    icon: 'warn',
-    color: V.T.colors.warning,
-  }, {
-    title: '深层重构',
-    subtitle: 'CORE SYSTEM',
-    items: ['明确绝不能忍受的反向底线', '打造无摩擦的微习惯闭环', '单点突破建立正向反馈'],
-    icon: 'check',
-    color: V.T.colors.accent,
-  }, { t0: 0.3, centerText: 'VS' });
-}
-
-const BEAT_FN = [beat1, beat2];
-
 V.createApp({
-  theme: '{{THEME}}',
+  style: VIDEO_STYLE,
   dur: DUR,
   beats: BEATS,
   subs: SUBS,
-  label: '◉ {{TITLE}}',
-  drawBeat: (i, u, t) => BEAT_FN[i](u, t),
+  label: {{TITLE_JSON}},
+  drawBeat: (i, u, t) => SceneStyles.draw(SCENES[i], u, t, VIDEO_STYLE),
 });

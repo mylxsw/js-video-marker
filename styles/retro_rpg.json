@@ -1,0 +1,12 @@
+{
+  "id": "retro_rpg",
+  "name": "像素冒险",
+  "design": "任务、经验值、扫描线与像素网格，明确采用游戏化叙事。",
+  "useFor": "挑战、成长任务、游戏或黑客题材",
+  "theme": "retro_rpg",
+  "scene": { "family": "game", "font": "mono", "accent": "quest" },
+  "motion": { "entry": "snap", "enterSeconds": 0.22, "exitSeconds": 0.22 },
+  "chrome": { "hud": "retro" },
+  "captions": { "maxWidth": 1660, "bottomY": 980, "lineGap": 65, "colors": ["#ffffff", "#b8eaff"], "outline": "rgba(2,6,20,0.95)", "shadow": "rgba(0,0,0,0.78)" },
+  "audio": { "source": "generated", "genre": "chiptune", "bpm": 132, "mix": { "musicLevel": 0.72, "duckLevel": 0.22 } }
+}

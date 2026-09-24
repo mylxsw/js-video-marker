@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Procedural multi-genre music bed for video-maker projects.
-Supports: chiptune, lofi, ambient, tech_pulse, minimal_piano, or external --bgm.
+Supports: chiptune, lofi, ambient, tech_pulse, minimal_piano, comic_pluck, or external --bgm.
 
 Usage:
   python3 make_music.py --dur 44 --bounds 0,6.51,22.91,32.23,44 --genre lofi --out audio/music.wav
@@ -311,6 +311,33 @@ def gen_minimal_piano(total_samples, bounds, bpm=88):
 
     return mix
 
+def gen_comic_pluck(total_samples, bounds, bpm=104):
+    """Quiet, bouncing plucked notes with space for narration."""
+    beat = 60.0 / bpm
+    mix = np.zeros(total_samples)
+
+    def add(s0, sig):
+        s1 = min(total_samples, s0 + len(sig))
+        if s1 > s0:
+            mix[s0:s1] += sig[:s1 - s0]
+
+    chords = [[48, 55, 64, 67], [45, 52, 60, 64],
+              [41, 48, 57, 60], [43, 50, 59, 62]]
+    for section, (start, end) in enumerate(zip(bounds, bounds[1:])):
+        chord = chords[section % len(chords)]
+        tick = start
+        step = 0
+        while tick < end - 0.12:
+            # Alternating bass and small upper plucks suggest a playful walk.
+            note = chord[0] - 12 if step % 4 == 0 else chord[1 + step % 3] + 12
+            length = min(beat * 0.58, end - tick)
+            add(*tone(note, tick, length, 'rhodes', 0.23 if step % 4 == 0 else 0.14))
+            tick += beat * 0.5
+            step += 1
+        if end - start > beat * 2:
+            add(*tone(chord[2] + 12, start + beat, min(beat * 0.45, end - start - beat), 'piano', 0.12))
+    return mix
+
 # ---------------------------------------------------------------- external BGM decoder
 
 def process_external_bgm(bgm_path, dur, out_path):
@@ -334,7 +361,7 @@ def main():
     ap = argparse.ArgumentParser(description="Procedural multi-genre music generator for video-maker")
     ap.add_argument("--dur", type=float, required=True, help="Total track duration in seconds")
     ap.add_argument("--bounds", default=None, help="Comma-separated timeline bounds, e.g. 0,6.51,22.91,44")
-    ap.add_argument("--genre", choices=["chiptune", "lofi", "ambient", "tech_pulse", "minimal_piano"],
+    ap.add_argument("--genre", choices=["chiptune", "lofi", "ambient", "tech_pulse", "minimal_piano", "comic_pluck"],
                     default="chiptune", help="Musical genre preset (default: chiptune)")
     ap.add_argument("--bpm", type=int, default=None, help="Optional BPM override")
     ap.add_argument("--bgm", default=None, help="Optional path to external music audio file")
@@ -377,6 +404,8 @@ def main():
         mix = gen_tech_pulse(total_samples, bounds, args.bpm or 124)
     elif g == "minimal_piano":
         mix = gen_minimal_piano(total_samples, bounds, args.bpm or 88)
+    elif g == "comic_pluck":
+        mix = gen_comic_pluck(total_samples, bounds, args.bpm or 104)
     else:
         mix = gen_chiptune(total_samples, bounds, args.bpm or 132)
 

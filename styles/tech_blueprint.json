@@ -1,0 +1,12 @@
+{
+  "id": "tech_blueprint",
+  "name": "工程蓝图",
+  "design": "网格、标注、连线与逐步构建的结构图，强调过程和因果。",
+  "useFor": "技术架构、流程与系统讲解",
+  "theme": "tech_blueprint",
+  "scene": { "family": "blueprint", "font": "mono", "accent": "nodes" },
+  "motion": { "entry": "draw", "enterSeconds": 0.65, "exitSeconds": 0.28 },
+  "chrome": { "hud": "minimal" },
+  "captions": { "maxWidth": 1660, "bottomY": 980, "lineGap": 65, "colors": ["#f0f9ff", "#b7eaff"], "outline": "rgba(2,12,30,0.85)", "shadow": "rgba(0,0,0,0.68)" },
+  "audio": { "source": "generated", "genre": "tech_pulse", "bpm": 124 }
+}

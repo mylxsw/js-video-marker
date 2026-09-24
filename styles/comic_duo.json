@@ -1,0 +1,23 @@
+{
+  "id": "comic_duo",
+  "name": "黑白双人漫画",
+  "design": "参考没头脑与不高兴的黑白手绘角色设定：大头小身、粗墨线、留白和简洁分格。角色动作要与旁白所述的事件相连；只有角色确实发言时才使用对话气泡。",
+  "useFor": "人物关系、观点对比、生活故事、教育和带轻幽默感的知识解说",
+  "theme": {
+    "extends": "academic_paper", "id": "comic_duo",
+    "colors": { "bg1": "#ffffff", "bg2": "#ffffff", "bg3": "#ffffff", "primary": "#111111", "secondary": "#333333", "accent": "#111111", "surface": "#ffffff", "textPrimary": "#111111", "textSecondary": "#333333" },
+    "background": { "type": "clean", "particles": 0, "vignette": false, "scanlines": false }
+  },
+  "scene": { "family": "comic", "font": "handwritten", "accent": "ink" },
+  "characters": {
+    "render": "sprite",
+    "cast": {
+      "lead": { "actor": "bright", "name": "没头脑" },
+      "foil": { "actor": "serious", "name": "不高兴" }
+    }
+  },
+  "motion": { "entry": "draw", "enterSeconds": 0.6, "exitSeconds": 0.3 },
+  "chrome": { "hud": "none" },
+  "captions": { "maxWidth": 1700, "bottomY": 1008, "lineGap": 65, "primarySize": 48, "secondarySize": 42, "colors": ["#111111", "#333333"], "outline": "rgba(255,255,255,0.95)", "shadow": "rgba(255,255,255,0.6)" },
+  "audio": { "source": "generated", "genre": "comic_pluck", "bpm": 104, "mix": { "musicLevel": 0.68, "duckLevel": 0.22 } }
+}

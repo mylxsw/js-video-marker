@@ -1,0 +1,16 @@
+{
+  "id": "editorial_ink",
+  "name": "杂志墨印",
+  "design": "米白纸面、黑色衬线大标题、留白与红色编者批注；像动态杂志页面。",
+  "useFor": "人物文章、观点评论、文化与阅读内容",
+  "theme": {
+    "extends": "academic_paper", "id": "editorial_ink",
+    "colors": { "bg1": "#f3efe7", "bg2": "#eee8dd", "bg3": "#e5dccd", "primary": "#1f2428", "accent": "#a64331", "warning": "#a64331", "surface": "#f8f4eb", "textPrimary": "#1f2428", "textSecondary": "#585248" },
+    "background": { "type": "clean", "particles": 0, "vignette": false }
+  },
+  "scene": { "family": "editorial", "font": "serif", "accent": "rule" },
+  "motion": { "entry": "wipe", "enterSeconds": 0.45, "exitSeconds": 0.28 },
+  "chrome": { "hud": "none" },
+  "captions": { "maxWidth": 1700, "bottomY": 980, "lineGap": 65, "colors": ["#1f2428", "#585248"], "outline": "rgba(248,244,235,0.95)", "shadow": "rgba(248,244,235,0.65)" },
+  "audio": { "source": "generated", "genre": "minimal_piano", "bpm": 76, "mix": { "musicLevel": 0.76, "duckLevel": 0.28 } }
+}

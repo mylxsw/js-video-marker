@@ -1,0 +1,12 @@
+{
+  "id": "modern_business",
+  "name": "现代商业简报",
+  "design": "像一份动态商业简报：大数字、分栏、细线与清晰结论，避免游戏界面。",
+  "useFor": "商业策略、产品和财经解释",
+  "theme": "modern_business",
+  "scene": { "family": "presentation", "font": "sans", "accent": "blocks" },
+  "motion": { "entry": "wipe", "enterSeconds": 0.48, "exitSeconds": 0.3 },
+  "chrome": { "hud": "none" },
+  "captions": { "maxWidth": 1700, "bottomY": 980, "lineGap": 65, "colors": ["#fafafa", "#ddd6fe"], "outline": "rgba(8,7,15,0.82)", "shadow": "rgba(0,0,0,0.7)" },
+  "audio": { "source": "generated", "genre": "ambient", "bpm": 96 }
+}
