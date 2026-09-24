@@ -1,84 +1,96 @@
 ---
 name: "video-maker"
-description: "Agent-driven pipeline that turns a narration script into a finished animated explainer video: per-line TTS voiceover, procedural chiptune music, code-driven canvas animation via the reusable V.* component library (lib/anim.js), headless-Chromium frame rendering, and audio/video muxing. Use when the user wants to convert text or content into a video, or asks for the video toolkit."
+description: "Agent-driven pipeline that transforms any article or text into a professional animated explainer video: automatic content analysis & multi-style visual/music recommendation, storyboard keyframe image generation & interactive user review before full video rendering, per-line TTS voiceover, procedural multi-genre music synthesis, code-driven canvas animations via V.* components, headless-Chromium rendering, and audio/video muxing. Use when the user provides an article, text, or script to create an explainer video, or asks for the video toolkit."
 ---
 
-# Video Maker
+# Video Maker · 分镜先行与多风格自适应视频管线
 
-## Purpose
-Convert written content into a finished short animated video (30–90s) end to end with no manual editing tools. The pipeline is deterministic: the timeline is derived from measured TTS durations, so audio and video sync by construction. Proven on a 44s shipped demo.
+## 核心设计理念
+本管线将任意文章或文本转化为**高质量解说动画视频（30–90秒）**。
+核心原则：**分镜图片先行，确认满意后再全量渲染**。
+
+在耗费较多时间进行逐帧全量视频渲染之前，管线会先在秒级（~2秒）内自动生成**全套分镜效果图（Storyboard Keyframes）**，让用户直观预览每一幕的画面排版、配色对比、图表和字幕。用户可以随时提出修改意见并即时刷新，待用户最终确认满意后，才执行全量视频渲染与合成。
 
 > [!TIP]
 > **环境检查：** 首次使用或排查问题时，可运行 `node <skill-dir>/bin/doctor.mjs` 自检当前系统环境与依赖。`<skill-dir>` 为本技能所在的根目录。
 
-## Workflow
+---
 
-**0. Scaffold.** 
-```sh
-node <skill-dir>/bin/new-video.mjs <dir> --title "标题" [--dur 44]
-```
-脚手架会在 `<dir>` 中自动生成项目文件及便捷运行脚本 `<dir>/run.sh`。
+## 完整工作流：三阶段闭环
 
-**1. Script.** Write 4–8 spoken-style lines in `<dir>/script.txt` (`n1: …`). Spell out numbers/abbreviations as pronounced; no stage directions.
+### 第一阶段：内容分析与风格推荐 (Phase 1: Style Alignment)
 
-**2. Voiceover.** Synthesize **one file per line** (needed for per-line timing):
-```sh
-python3 <skill-dir>/bin/tts.py --text "第一句。" --out <dir>/audio/n1.mp3
-```
-支持 `edge-tts`（神经网络高保真）与 macOS 系统内置 `say`（如婷婷 Tingting）。
-合成后测量每句时长：
-```sh
-ffprobe -v error -show_entries format=duration -of csv=p=0 <dir>/audio/n1.mp3
-```
-Non-English quality varies; tell the user if it sounds off and offer another voice.
+当用户提供一篇文章时，先分析题材特征并与用户对齐风格：
 
-**3. Lock the timeline.** From measured durations d1..dN:
-- narration offsets: `o1 = 0.6`, `o(i+1) = o(i) + d(i) + 0.8`
-- beats: `[0, o2], [o2, o3], …`, last beat ends at `oN + dN + 2.5` (outro pad)
-- `DUR` = last beat end; `SUBS[i] = [o(i), o(i) + d(i), text]`
+1. **内容特征分析：**
+   - **题材调性**：个人成长与哲学认知、系统架构与编程实战、商业战略与产品财经、论文解析与数理逻辑、极客突破等。
+   - **核心视觉隐喻**：左右对比分栏（认知误区 vs 核心重构）、关键数据冲击（10x / 92%）、流程步骤（01 → 02 → 03）、概念拓扑（因果回路）、深度名言金句。
+2. **给出 2–3 种推荐风格候选（并支持自动生成全新风格）：**
+   - `minimal_dark`（深邃知识探索）：Notion / Linear 质感，深蓝黑微光底色，柔和天蓝与微粒浮动，搭配 `lofi` 慢摇配乐。
+   - `tech_blueprint`（工程师蓝图）：普鲁士深蓝网格拓扑、亮电青发光连线，搭配 `tech_pulse` 科技脉冲配乐。
+   - `modern_business`（现代科技轻商务）：高级深灰紫与翡翠绿微透质感，搭配 `ambient` 氛围音。
+   - `academic_paper`（极简学术白板）：沉稳低饱和暖白纸面、墨黑线条、荧光马克笔重点，搭配 `minimal_piano` 极简钢琴。
+   - `retro_rpg`（像素极客冒险）：经典赛博网格、CRT 扫描线、经验条与金币，搭配 `chiptune` 8-bit 配乐。
+3. **与用户确认风格后进入第二阶段。**
 
-Write `DUR`, `BEATS`, `SUBS` into `<dir>/demo.js`. Never guess durations — always measure.
+---
 
-**4. Music.**
-```sh
-python3 <skill-dir>/bin/make_music.py --dur DUR --bounds 0,b1,b2,…,DUR --out <dir>/audio/music.wav
-```
-（bounds 即各 beat 的起止边界）。
+### 第二阶段：分镜制作、图片预览与交互迭代 (Phase 2: Storyboard Preview & Review)
 
-**5. Animation.** Implement one beat function per act in `demo.js` using the `V.*` library (`lib/anim.js`; API in `references/components.md`). Keep `render(t)` a pure function of time. Reuse: `V.card`, `V.questLog`, `V.rulesList`, `V.shieldScene`, `V.flipCard`, `V.terminal`, `V.titlePop`, `V.pressStart`, `V.toast`, plus the `V.seg`/`V.tw`/`V.mv` tween DSL.
+在生成完整视频之前，**必须先生成分镜效果图供用户预览与确认**：
 
-**6. QC loop.**
-```sh
-node <skill-dir>/bin/render.mjs <dir> snaps [--snaps 2,8,20]
-# 或者在 <dir> 目录内直接运行: ./run.sh snaps
-```
-→ 查看生成的关键帧 PNG（`<dir>/out/snaps/`），修复视觉排版 Bug 并重复质检。检查要点：文字清晰度、无镜像反转、元素不重叠、字幕落在各自时间窗内。
+1. **脚手架与文案提取：**
+   ```sh
+   node <skill-dir>/bin/new-video.mjs <dir> --title "视频标题" --theme <theme_id> [--dur 44]
+   ```
+   在 `<dir>/script.txt` 中编写 4–8 句口语化解说词（`n1: ...`），数字与缩写按发音展开。
+2. **逐句配音与实测时间轴：**
+   ```sh
+   # 自动使用 Fish Audio API（读取 FISH_API_KEY 环境变量，或回退至 edge-tts / macOS say）
+   python3 <skill-dir>/bin/tts.py --text "第一句解说词。" --out <dir>/audio/n1.mp3
+   ffprobe -v error -show_entries format=duration -of csv=p=0 <dir>/audio/n1.mp3
+   ```
+   计算并严格锁定时间轴（`o1 = 0.6`, `o(i+1) = o(i) + d(i) + 0.8`, `DUR = oN + dN + 2.5`），写入 `demo.js` 的 `DUR`、`BEATS`、`SUBS`。
+3. **分镜动效排版（Drafting Beats）：**
+   在 `demo.js` 中使用 `V.*` 知识可视化组件库（`compareView`、`metricCard`、`stepList`、`quoteCard`、`nodeGraph`、`panel`、`card` 等）实现各幕画面。
+4. **生成全套分镜效果图（Storyboard）：**
+   ```sh
+   node <skill-dir>/bin/render.mjs <dir> storyboard
+   # 或在项目目录下直接运行: ./run.sh storyboard
+   ```
+   2 秒内自动分析所有幕的起止区间，捕获各幕高潮画面的高清截图至 `<dir>/out/storyboard/act_*.png`，并生成预览画廊网页 `<dir>/out/storyboard/index.html`。
+5. **向用户展示分镜效果并征询反馈：**
+   - 提取生成的各幕关键帧图片（`act_1.png`, `act_2.png`, ...），向用户展示每幕的画面预览、对应解说词与视觉重点；
+   - 征询用户反馈：“请查看以上分镜效果图。您可以提出任何调整建议（如更换配色、调整元素大小、重排版式、替换隐喻等）。”
+   - 若用户提出修改需求：修改 `demo.js` 后重新运行 `./run.sh storyboard`，秒级呈现新效果图，直到用户满意。
+   - **获得用户明确确认（“效果满意，开始生成”）后，再启动第三阶段。**
 
-**7. Mix.**
-```sh
-python3 <skill-dir>/bin/make_mix.py --dir <dir> --offsets o1,o2,… --dur DUR
-# 或者在 <dir> 目录内直接运行: ./run.sh mix --offsets o1,o2,... --dur DUR
-```
-（自动实现语音处音乐闪避 ducking）。
+---
 
-**8. Render + mux.**
-```sh
-node <skill-dir>/bin/render.mjs <dir> video [--fps 30]
-ffmpeg -y -i <dir>/out/video.mp4 -i <dir>/audio/mix.wav -c:v copy -c:a aac -b:a 160k <dir>/out/final.mp4
-# 或者在 <dir> 目录内直接运行: ./run.sh video && ./run.sh mux
-```
-抽查 `final.mp4` 画面后，将其作为附件交付给用户。
+### 第三阶段：全量渲染与合成交付 (Phase 3: Video Rendering & Muxing)
 
-## Output Contract
-- `<dir>/out/final.mp4` — the deliverable (H.264 + AAC).
-- Keep `demo.js`, `index.html`, `script.txt`, `audio/`, `BUILD.md` in the project dir for reproducibility.
+1. **配乐与智能混音：**
+   ```sh
+   python3 <skill-dir>/bin/make_music.py --dur DUR --bounds 0,o2,...,DUR --genre <genre> --out <dir>/audio/music.wav
+   python3 <skill-dir>/bin/make_mix.py --dir <dir> --offsets o1,o2,... --dur DUR
+   # 或在项目目录下运行: ./run.sh music && ./run.sh mix
+   ```
+2. **全量视频逐帧渲染：**
+   ```sh
+   node <skill-dir>/bin/render.mjs <dir> video
+   # 或在项目目录下运行: ./run.sh video
+   ```
+3. **音视频合流与交付：**
+   ```sh
+   ffmpeg -y -i <dir>/out/video.mp4 -i <dir>/audio/mix.wav -c:v copy -c:a aac -b:a 160k <dir>/out/final.mp4
+   # 或在项目目录下运行: ./run.sh mux
+   ```
+   最终产物输出为 `<dir>/out/final.mp4`，直接交付给用户。
 
-## Operating Rules
-1. Timeline comes from measurement, not memory. Re-run TTS → durations change → re-lock.
-2. One beat = one idea = one narration line. 4–8 beats per video.
-3. In render mode the page must be exactly 1920×1080 — `V.createApp` handles this; do not fight it with CSS.
-4. `render.mjs` serves the page over `file://`; never start an http server for it (Chrome blocks it).
-5. Flip animations: always use `V.flipCard` — hand-rolled `scale(-x,1)` mirrors text (a real QC catch).
-6. Fonts: the library targets CJK + mono stacks available on the render host; no webfont downloads in render mode.
-7. `py_compile` any Python you add under `bin/`.
-8. Deliver `final.mp4` as a chat attachment in the same message as the summary.
+---
+
+## 交付物与质量守则
+1. **分镜必审**：禁止直接跨过分镜直接渲染全量视频。先出图片，确认满意再跑视频。
+2. **时间轴必测**：绝不猜时长，严格通过 `ffprobe` 测量配音。
+3. **字体与间距**：CJK 标题间距 `gap >= px + 14`；文字必须使用 `wrapCN` 控制在容器边界内。
+4. **渲染环境**：锁定 1920×1080，使用本地通用字体栈，零外部 webfont 依赖。

@@ -22,14 +22,23 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 - 必须 **逐句** 生成独立 mp3（`n1.mp3…nN.mp3`），整段生成无法精确测量每句时长。
 - 中文数字、缩写、时间按读音写（"四十二" 而非 "42"）。
 - TTS 后端输出时长 **每次可能不同**（同文本曾测得 5.11s 与 8.35s 两个版本）。凡重新生成配音，必须重新 `ffprobe` 测量并重锁时间轴。
-- 音色与引擎：使用 `bin/tts.py` 支持多种后端：
-  - `edge-tts`：推荐（微软高品质神经网络语音，如 `zh-CN-XiaoxiaoNeural`、`zh-CN-YunxiNeural`）。
-  - macOS `say`：macOS 系统自带离线语音（默认中文 `Tingting`，无需额外安装 pip 包）。
-  - 可指定 `--voice <name>` 参数进行切换。
+- 音色与引擎：使用 `bin/tts.py` 支持多种后端（默认自动优选最优质可用引擎）：
+  - `Fish Audio API`（首选推荐）：高品质逼真 AI 语音。只需配置环境变量 `FISH_API_KEY`（或 `FISH_AUDIO_API_KEY`），脚本自动识别启用。支持 `--voice <reference_id>` 指定定制或社区音色，支持 `--model s2.1-pro` 与 `--speed 1.1` 调节语速。
+  - `edge-tts`：高质量免费微软神经网络语音（如 `zh-CN-XiaoxiaoNeural`、`zh-CN-YunxiNeural`，需 `pip install edge-tts`）。
+  - macOS `say`：macOS 自带离线语音（默认 `Tingting`，无需网络或 pip 安装）。
+  - 可指定 `--engine auto|fish-audio|edge|say|system` 与 `--voice <id_or_name>` 进行切换。
 
 ## 配乐说明
 
-`make_music.py` 生成 C 大调 chiptune：方波主旋律 + 三角波贝斯 + 噪声镲片。按 `--bounds` 分段落，段落数 ≠ 4 时旋律/贝斯型循环使用。首段（0–bounds[1]）自动留白、只播一遍主旋律，适合开场。整体风格偏轻快；如需严肃题材，可改 `LEAD` 音阶为小调或降速（改 `BPM`）。
+`make_music.py` 支持多种程序化合成风格及外部 BGM 导入：
+- 风格参数 `--genre`：
+  - `lofi`: 温暖复古 Rhodes 电子琴和弦 + 软质低音 Sub Bass + 黑胶唱片微底噪 + 慢摇镲片（适合认知成长、深度思考、哲学反思）。
+  - `tech_pulse`: 16分音符琶音 + 脉冲贝斯 + 电子高频镲片（适合工程蓝图、系统架构、硬核实战）。
+  - `ambient`: 空灵宽广长音垫 + 泛音五度 + 深度氛围（适合宏观视野、冥想、战略格局）。
+  - `minimal_piano`: 极简沉思钢琴和弦 + 抒情单音旋律（适合学术论文、数理逻辑、知识科普）。
+  - `chiptune`: 经典 8-bit 方波主旋律 + 三角波贝斯 + 噪声打击（适合极客游戏、突破挑战）。
+- 外部 BGM 支持 `--bgm <path>`：
+  - 若传入本地 mp3/wav 音乐文件，会自动通过 ffmpeg 解码、裁剪、规整单声道 44.1kHz，并自动追加首部 0.5s 淡入与尾部 1.5s 渐弱淡出。
 
 ## 混音说明
 
@@ -37,7 +46,8 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 
 ## 渲染说明
 
-- `render.mjs <dir> snaps`：默认在全片均匀取 16 帧；`--snaps` 可指定关键时间点，质检时优先取「转场点 ±0.3s」和「字幕切换点」。
+- `render.mjs <dir> storyboard`（强烈推荐！）：自动感知 `BEATS` 各幕区间，并在 2 秒内截取每一幕的视觉高潮帧（`out/storyboard/act_*.png`），同时生成 `out/storyboard/index.html` 预览画廊，供用户和创作者直观审查视觉版式与字幕。
+- `render.mjs <dir> snaps`：用于自定义时间戳抽帧；`--snaps t1,t2` 可指定关键时间点，质检时优先取「转场点 ±0.3s」和「字幕切换点」。
 - `render.mjs <dir> video`：30fps 逐帧截图 → 管道喂给 ffmpeg（libx264 crf 18）。44s 约 1320 帧，耗时约 10–20 分钟（主要花在截图 IPC）。可开 `--fps 24` 提速，肉眼差别不大。
 - Chrome 路径：内置跨平台自动探测机制（支持 macOS Chrome/Edge、Linux chrome/chromium、Windows 等）。亦可使用环境变量 `VM_CHROME` 显式覆盖。
 - 端口与资源：默认优先使用 9222 端口，若被占用会自动寻找可用空闲端口；退出或中断时会自动清理临时用户数据目录与 Chrome 进程。
@@ -63,12 +73,8 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 | TTS 同文本两次时长差 60% | 时间轴永远从实测重算，不许凭记忆 hardcode |
 | 后台任务误删配音文件 | 混音前用 `ffprobe` 批量核对 n1..nN 时长，异常即停 |
 | `cd dir && tts … & tts … &` 第二个 tts 没进目录 | `&&` 只绑定第一个后台任务；逐句 tts 用分开的命令或先 `cd` 再逐个运行 |
-
-## 渲染器健壮性
-
-- `render.mjs` 启动 Chrome 后最多等待 30s 直到 DevTools 端点就绪（冷启动慢）。
-- 每次运行使用独立临时 `--user-data-dir`，进程退出、崩溃或中断信号时自动清理。
-- 端口冲突时自动寻找可用端口，避免 `ECONNREFUSED` 或冲突。
+| CJK 字符在 `titlePop` 重叠 | 字符间距 `gap` 必须至少大于 `px + 2`（推荐 `px + 14`） |
+| 单行 card 文本溢出 | `card` 的 `desc` 是单行不换行，限 12–15 字；如需多段长文使用 `compareView` 或 `stepList` |
 
 ## 复刻新视频的最简命令序列
 
@@ -77,25 +83,27 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 SKILL_DIR="/path/to/video-maker"
 D=~/projects/my-video
 
-node "$SKILL_DIR/bin/new-video.mjs" "$D" --title "标题"
+# 1. 初始化项目（支持 --theme minimal_dark|tech_blueprint|modern_business|academic_paper|retro_rpg）
+node "$SKILL_DIR/bin/new-video.mjs" "$D" --title "标题" --theme minimal_dark
+
 cd "$D" && $EDITOR script.txt
 
-# 逐句生成配音并测时长（可使用 bin/tts.py）
+# 2. 逐句生成配音并测时长（可使用 bin/tts.py）
 python3 "$SKILL_DIR/bin/tts.py" --text "第一句解说词。" --out audio/n1.mp3
 ffprobe -v error -show_entries format=duration -of csv=p=0 audio/n1.mp3
 
-# …根据公式填 demo.js 时间轴与 BEAT 函数…
+# 3. …根据实测时长填 demo.js 时间轴与 BEAT 函数…
 
-# 生成配乐
-python3 "$SKILL_DIR/bin/make_music.py" --dur $DUR --bounds 0,…,$DUR --out audio/music.wav
+# 4. 生成配乐（自动匹配对应主题音乐风格）
+./run.sh music --dur $DUR --bounds 0,…,$DUR
 
-# 抽帧质检（看图修 bug）
-./run.sh snaps  # 或 node "$SKILL_DIR/bin/render.mjs" . snaps
+# 5. 抽帧质检（看图修 bug）
+./run.sh snaps
 
-# 混音
+# 6. 混音
 ./run.sh mix --offsets 0.6,… --dur $DUR
 
-# 渲染与合成
+# 7. 全量渲染与音视频合成
 ./run.sh video
 ./run.sh mux
 ```

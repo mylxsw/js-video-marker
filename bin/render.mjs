@@ -1,11 +1,12 @@
 // video-maker CDP renderer. Zero npm deps (node built-in WebSocket).
 // Usage:
-//   node render.mjs <project-dir> snaps [--snaps 1.5,8,20]   -> keyframe PNGs to <dir>/out/snaps/
+//   node render.mjs <project-dir> storyboard                -> per-act keyframe preview to <dir>/out/storyboard/
+//   node render.mjs <project-dir> snaps [--snaps 1.5,8,20]   -> custom timestamp PNGs to <dir>/out/snaps/
 //   node render.mjs <project-dir> video [--fps 30]           -> full render -> <dir>/out/video.mp4
 // DUR is parsed from <dir>/demo.js (`const DUR = <n>`).
 
 import { spawn, execSync } from 'node:child_process';
-import { mkdirSync, createWriteStream, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, createWriteStream, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { tmpdir, homedir, platform } from 'node:os';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -167,7 +168,7 @@ async function main() {
   }
 
   const PORT = process.env.VM_PORT ? parseInt(process.env.VM_PORT, 10) : await getAvailablePort(9222);
-  const profile = join(tmpdir(), `vm-chrome-${process.pid}-${Date.now()}`);
+  const profile = process.env.VM_PROFILE_DIR || join(DIR, `.chrome_profile_${process.pid}_${Date.now()}`);
 
   let chrome = null;
 
@@ -244,7 +245,117 @@ async function main() {
       return Buffer.from(r.data, 'base64');
     };
 
-    if (MODE === 'snaps') {
+    if (MODE === 'storyboard') {
+      const sbDir = join(DIR, 'out', 'storyboard');
+      mkdirSync(sbDir, { recursive: true });
+
+      // Query page for BEATS and SUBS
+      const evalRes = await send('Runtime.evaluate', {
+        expression: `JSON.stringify({
+          beats: window.__BEATS || [],
+          subs: window.__SUBS || [],
+          theme: (typeof V !== 'undefined' && V.theme) ? (V.theme.name || V.theme.id) : '',
+          title: document.title || ''
+        })`,
+        returnByValue: true
+      });
+
+      let pageData = { beats: [], subs: [], theme: '', title: '' };
+      try {
+        if (evalRes.result && evalRes.result.value) {
+          pageData = JSON.parse(evalRes.result.value);
+        }
+      } catch {}
+
+      const beats = pageData.beats.length > 0 ? pageData.beats : [
+        [0.0, DUR * 0.25],
+        [DUR * 0.25, DUR * 0.5],
+        [DUR * 0.5, DUR * 0.75],
+        [DUR * 0.75, DUR]
+      ];
+
+      const manifest = {
+        title: pageData.title,
+        theme: pageData.theme,
+        duration: DUR,
+        acts: []
+      };
+
+      console.log(`\n=== 正在生成分镜效果图 (共 ${beats.length} 幕) ===`);
+
+      for (let i = 0; i < beats.length; i++) {
+        const [s, e] = beats[i];
+        // Climax point: after entrance animation finishes, before exit fade
+        const t = Math.max(s + 0.5, Math.min(e - 0.5, s + (e - s) * 0.65));
+        const png = await shot(t);
+        const fileName = `act_${i + 1}.png`;
+        const filePath = join(sbDir, fileName);
+        createWriteStream(filePath).end(png);
+
+        // Find corresponding subtitle
+        const sub = (pageData.subs || []).find(subItem => t >= subItem[0] && t < subItem[1]);
+        const subText = sub ? sub[2] : '';
+
+        manifest.acts.push({
+          act: i + 1,
+          time: +t.toFixed(2),
+          start: s,
+          end: e,
+          file: fileName,
+          path: filePath,
+          subtitle: subText
+        });
+
+        console.log(`✓ 第 ${i + 1} 幕 [${s.toFixed(1)}s - ${e.toFixed(1)}s] @ t=${t.toFixed(1)}s -> ${filePath}`);
+        if (subText) console.log(`  解说词: "${subText}"`);
+      }
+
+      // Write manifest.json
+      writeFileSync(join(sbDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+
+      // Generate HTML gallery for preview
+      const htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>${manifest.title || '分镜预览'} · Storyboard</title>
+<style>
+  body { margin: 0; padding: 32px; background: #0b0f19; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif; }
+  h1 { font-size: 28px; margin-bottom: 8px; color: #f8fafc; }
+  .meta { color: #94a3b8; font-size: 15px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(540px, 1fr)); gap: 28px; }
+  .card { background: #131a2b; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  .card img { width: 100%; aspect-ratio: 16/9; display: block; object-fit: cover; }
+  .card-body { padding: 18px 20px; }
+  .act-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .act-title { font-weight: 700; font-size: 18px; color: #38bdf8; }
+  .act-time { font-family: monospace; font-size: 14px; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 6px; }
+  .sub-text { font-size: 15px; line-height: 1.6; color: #cbd5e1; }
+</style>
+</head>
+<body>
+  <h1>${manifest.title || '分镜预览'}</h1>
+  <div class="meta">风格主题: <strong>${manifest.theme || '默认'}</strong> ｜ 总时长: <strong>${DUR}s</strong> ｜ 共 <strong>${manifest.acts.length}</strong> 幕分镜</div>
+  <div class="grid">
+    ${manifest.acts.map(a => `
+      <div class="card">
+        <a href="${a.file}" target="_blank"><img src="${a.file}" alt="Act ${a.act}" /></a>
+        <div class="card-body">
+          <div class="act-header">
+            <span class="act-title">第 ${a.act} 幕 (Act ${a.act})</span>
+            <span class="act-time">${a.time}s [${a.start}s - ${a.end}s]</span>
+          </div>
+          <div class="sub-text"><strong>解说词:</strong> ${a.subtitle || '（无字幕）'}</div>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+</body>
+</html>`;
+      writeFileSync(join(sbDir, 'index.html'), htmlContent);
+      console.log(`\n分镜预览网页已生成: ${join(sbDir, 'index.html')}`);
+      console.log(`=========================================\n`);
+    } else if (MODE === 'snaps') {
       const snapsDir = join(DIR, 'out', 'snaps');
       mkdirSync(snapsDir, { recursive: true });
       for (const t of SNAP_TIMES) {

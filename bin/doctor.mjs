@@ -80,23 +80,30 @@ try {
 
 // 5. TTS 引擎检测
 let ttsAvailable = false;
+const fishKey = process.env.FISH_API_KEY || process.env.FISH_AUDIO_API_KEY;
+if (fishKey) {
+  const masked = fishKey.length > 8 ? `${fishKey.slice(0, 4)}...${fishKey.slice(-4)}` : '******';
+  ok(`TTS 引擎: Fish Audio API (高质量 AI 语音，已配置 KEY: ${masked})`);
+  ttsAvailable = true;
+}
+
 try {
   execSync('edge-tts --version', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  ok('TTS 引擎: edge-tts (微软神经网络语音，高质量)');
+  ok('TTS 引擎 (备用): edge-tts (微软神经网络语音，高质量)');
   ttsAvailable = true;
 } catch {
   // check say on darwin
   if (platform() === 'darwin' && hasFfmpeg) {
     try {
       execSync('which say', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-      ok('TTS 引擎: macOS say + ffmpeg (内置离线语音，如 Tingting)');
+      ok('TTS 引擎 (备用): macOS say + ffmpeg (内置离线语音，如 Tingting)');
       ttsAvailable = true;
     } catch {}
   }
 }
 
 if (!ttsAvailable) {
-  warn('未检测到开箱即用的 TTS 引擎。推荐安装: pip install edge-tts');
+  warn('未检测到开箱即用的 TTS 引擎。推荐配置环境变量 FISH_API_KEY 或安装 edge-tts: pip install edge-tts');
 }
 
 console.log('\n----------------------------');

@@ -1,5 +1,5 @@
 // Scaffold a new video-maker project.
-// Usage: node new-video.mjs <target-dir> --title "标题" [--dur 44]
+// Usage: node new-video.mjs <target-dir> --title "标题" [--theme minimal_dark] [--dur 44]
 
 import { mkdirSync, copyFileSync, readFileSync, writeFileSync, existsSync, chmodSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -37,22 +37,36 @@ const { flags, positional } = parseArgs(process.argv.slice(2));
 const target = positional[0];
 
 if (!target) {
-  console.error('usage: node new-video.mjs <target-dir> --title "标题" [--dur 44]');
+  console.error('usage: node new-video.mjs <target-dir> --title "标题" [--theme minimal_dark] [--dur 44]');
   process.exit(1);
 }
 
 const dir = resolve(target);
 const title = flags.title || '未命名视频';
+const theme = flags.theme || 'minimal_dark';
 const dur = flags.dur || '44';
+
+const GENRE_MAP = {
+  minimal_dark: 'lofi',
+  tech_blueprint: 'tech_pulse',
+  modern_business: 'ambient',
+  academic_paper: 'minimal_piano',
+  retro_rpg: 'chiptune',
+};
+const genre = flags.genre || GENRE_MAP[theme] || 'lofi';
 
 for (const d of [dir, join(dir, 'audio'), join(dir, 'out'), join(dir, 'lib')]) {
   mkdirSync(d, { recursive: true });
 }
 
+// Copy runtime animation & themes libraries
+copyFileSync(join(ROOT, 'lib', 'themes.js'), join(dir, 'lib', 'themes.js'));
 copyFileSync(join(ROOT, 'lib', 'anim.js'), join(dir, 'lib', 'anim.js'));
 
 const fill = (p) => readFileSync(join(ROOT, 'templates', p), 'utf8')
   .replaceAll('{{TITLE}}', title)
+  .replaceAll('{{THEME}}', theme)
+  .replaceAll('{{GENRE}}', genre)
   .replaceAll('{{DUR}}', String(dur));
 
 writeFileSync(join(dir, 'index.html'), fill('index.html'));
@@ -68,6 +82,8 @@ writeFileSync(join(dir, 'BUILD.md'),
 `# ${title} · 构建清单
 
 ## 基础信息
+- 视频主题风格: \`${theme}\`
+- 配乐风格预设: \`${genre}\`
 - 视频时长预设: ${dur}s
 - Skill 路径: \`${ROOT}\`
 
@@ -77,19 +93,21 @@ writeFileSync(join(dir, 'BUILD.md'),
        python3 "${ROOT}/bin/tts.py" --text "第一句。" --out audio/n1.mp3
        ffprobe -v error -show_entries format=duration -of csv=p=0 audio/n1.mp3
 - [ ] 3. 由时长锁定时间轴：填 demo.js 的 DUR/BEATS/SUBS（见 SKILL.md 步骤 3 公式）
-- [ ] 4. 写 beat 函数（V.* 组件，参考 demo.js）
+- [ ] 4. 写 beat 函数（V.* 组件，可使用 V.compareView, V.metricCard, V.stepList, V.quoteCard 等）
 - [ ] 5. 程序化配乐：
-       python3 "${ROOT}/bin/make_music.py" --dur DUR --bounds 0,b1,b2,...,DUR --out audio/music.wav
+       python3 "${ROOT}/bin/make_music.py" --dur DUR --bounds 0,b1,b2,...,DUR --genre ${genre} --out audio/music.wav
 - [ ] 6. 混音：
        python3 "${ROOT}/bin/make_mix.py" --dir . --offsets o1,o2,... --dur DUR
-- [ ] 7. 抽帧质检：
-       node "${ROOT}/bin/render.mjs" . snaps
-- [ ] 8. 全量渲染：
+- [ ] 7. 分镜关键帧预览与交互修改（强烈推荐！生成前确认）：
+       node "${ROOT}/bin/render.mjs" . storyboard
+       # 或直接运行: ./run.sh storyboard
+       # 快速生成 out/storyboard/ 各幕分镜效果图，确认视觉与排版满意
+- [ ] 8. 全量渲染（确认分镜满意后再执行）：
        node "${ROOT}/bin/render.mjs" . video
 - [ ] 9. 合成：
        ffmpeg -y -i out/video.mp4 -i audio/mix.wav -c:v copy -c:a aac -b:a 160k out/final.mp4
 
-> 快捷方式：您也可以使用当前目录下的 \`./run.sh <snaps|video|mux>\` 快速执行渲染与合成。
+> 快捷方式：您也可以使用当前目录下的 \`./run.sh <storyboard|snaps|video|mux>\` 快速执行各阶段。
 `);
 
 // Convenience helper script
@@ -100,6 +118,9 @@ DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 SKILL_ROOT="${ROOT}"
 
 case "\$1" in
+  storyboard)
+    node "\${SKILL_ROOT}/bin/render.mjs" "\${DIR}" storyboard "\${@:2}"
+    ;;
   snaps)
     node "\${SKILL_ROOT}/bin/render.mjs" "\${DIR}" snaps "\${@:2}"
     ;;
@@ -107,7 +128,7 @@ case "\$1" in
     node "\${SKILL_ROOT}/bin/render.mjs" "\${DIR}" video "\${@:2}"
     ;;
   music)
-    python3 "\${SKILL_ROOT}/bin/make_music.py" "\${@:2}"
+    python3 "\${SKILL_ROOT}/bin/make_music.py" --genre "${genre}" "\${@:2}"
     ;;
   mix)
     python3 "\${SKILL_ROOT}/bin/make_mix.py" --dir "\${DIR}" "\${@:2}"
@@ -117,7 +138,7 @@ case "\$1" in
     echo "Synthesized -> \${DIR}/out/final.mp4"
     ;;
   *)
-    echo "Usage: ./run.sh <snaps|video|music|mix|mux> [args...]"
+    echo "Usage: ./run.sh <storyboard|snaps|video|music|mix|mux> [args...]"
     exit 1
     ;;
 esac
@@ -127,5 +148,5 @@ try {
   chmodSync(runScriptPath, 0o755);
 } catch {}
 
-console.log('scaffolded', dir);
+console.log('scaffolded', dir, `(theme: ${theme}, music: ${genre})`);
 console.log('next: edit script.txt, then follow SKILL.md or BUILD.md');
