@@ -134,6 +134,32 @@ if (!existsSync(demoPath) || !existsSync(indexPath)) {
 const MODE = process.argv[3] || 'snaps';
 const args = parseCliArgs(process.argv.slice(4));
 
+const RES_PRESETS = {
+  '4k': { width: 3840, height: 2160, name: '4K UHD' },
+  'uhd': { width: 3840, height: 2160, name: '4K UHD' },
+  '2160p': { width: 3840, height: 2160, name: '4K UHD' },
+  '2k': { width: 2560, height: 1440, name: '2K QHD' },
+  'qhd': { width: 2560, height: 1440, name: '2K QHD' },
+  '1440p': { width: 2560, height: 1440, name: '2K QHD' },
+  '1080p': { width: 1920, height: 1080, name: '1080p FHD' },
+  'fhd': { width: 1920, height: 1080, name: '1080p FHD' },
+};
+
+function parseResolution(val) {
+  if (!val) return RES_PRESETS['4k'];
+  const s = String(val).toLowerCase().trim();
+  if (RES_PRESETS[s]) return RES_PRESETS[s];
+  const m = s.match(/^(\d+)x(\d+)$/);
+  if (m) {
+    return { width: parseInt(m[1], 10), height: parseInt(m[2], 10), name: `${m[1]}x${m[2]}` };
+  }
+  return RES_PRESETS['4k'];
+}
+
+const RES_CONFIG = parseResolution(args.res || args.resolution);
+const TARGET_W = RES_CONFIG.width;
+const TARGET_H = RES_CONFIG.height;
+
 const src = readFileSync(demoPath, 'utf8');
 const DUR = parseFloat((src.match(/const\s+DUR\s*=\s*([\d.]+)/) || [])[1]);
 if (!DUR) {
@@ -192,7 +218,7 @@ async function main() {
   try {
     chrome = spawn(CHROME, [
       '--headless', '--no-sandbox', '--disable-gpu', '--hide-scrollbars',
-      '--window-size=1920,1080', '--force-device-scale-factor=1',
+      `--window-size=${TARGET_W},${TARGET_H}`, '--force-device-scale-factor=1',
       `--user-data-dir=${profile}`,
       `--remote-debugging-port=${PORT}`,
       '--remote-allow-origins=*',
@@ -225,8 +251,14 @@ async function main() {
     await new Promise(r => ws.onopen = r);
     await send('Page.enable');
     await send('Runtime.enable');
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: TARGET_W,
+      height: TARGET_H,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
 
-    const targetUrl = pathToFileURL(indexPath).href + '?render=1';
+    const targetUrl = pathToFileURL(indexPath).href + `?render=1&w=${TARGET_W}&h=${TARGET_H}&res=${encodeURIComponent(args.res || args.resolution || '')}`;
     await send('Page.navigate', { url: targetUrl });
 
     for (let i = 0; i < 100; i++) {
@@ -240,7 +272,7 @@ async function main() {
       await sleep(15);
       const r = await send('Page.captureScreenshot', {
         format: 'png',
-        clip: { x: 0, y: 0, width: 1920, height: 1080, scale: 1 },
+        clip: { x: 0, y: 0, width: TARGET_W, height: TARGET_H, scale: 1 },
       });
       return Buffer.from(r.data, 'base64');
     };
@@ -368,12 +400,17 @@ async function main() {
       const outDir = join(DIR, 'out');
       mkdirSync(outDir, { recursive: true });
       const videoPath = join(outDir, 'video.mp4');
-      const ff = spawn('ffmpeg', [
+      console.log(`\n=== 开始渲染视频 [${RES_CONFIG.name} (${TARGET_W}x${TARGET_H})] @ ${FPS}fps | 预估总帧数: ${Math.round(DUR * FPS)} ===`);
+      const ffmpegArgs = [
         '-y', '-hide_banner', '-loglevel', 'error',
         '-f', 'image2pipe', '-framerate', String(FPS), '-i', '-',
         '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'medium',
-        videoPath,
-      ], { stdio: ['pipe', 'inherit', 'inherit'] });
+      ];
+      if (TARGET_W >= 2560) {
+        ffmpegArgs.push('-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709');
+      }
+      ffmpegArgs.push(videoPath);
+      const ff = spawn('ffmpeg', ffmpegArgs, { stdio: ['pipe', 'inherit', 'inherit'] });
 
       ff.on('error', (err) => {
         throw new Error(`Failed to start ffmpeg: ${err.message}. Is ffmpeg installed and in PATH?`);

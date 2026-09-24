@@ -77,9 +77,10 @@ description: "Agent-driven pipeline that transforms any article or text into a p
    ```
 2. **全量视频逐帧渲染：**
    ```sh
-   node <skill-dir>/bin/render.mjs <dir> video
-   # 或在项目目录下运行: ./run.sh video
+   node <skill-dir>/bin/render.mjs <dir> video [--res 4k|2k|1080p] [--fps 30|24]
+   # 或在项目目录下运行: ./run.sh video --res 4k --fps 24
    ```
+   - 支持画质选项：`--res 4k`（默认推荐，3840×2160 UHD 超高清）、`--res 2k`（2560×1440 QHD）、`--res 1080p`（1920×1080 FHD 极速导出）。
 3. **音视频合流与交付：**
    ```sh
    ffmpeg -y -i <dir>/out/video.mp4 -i <dir>/audio/mix.wav -c:v copy -c:a aac -b:a 160k <dir>/out/final.mp4
@@ -93,4 +94,4 @@ description: "Agent-driven pipeline that transforms any article or text into a p
 1. **分镜必审**：禁止直接跨过分镜直接渲染全量视频。先出图片，确认满意再跑视频。
 2. **时间轴必测**：绝不猜时长，严格通过 `ffprobe` 测量配音。
 3. **字体与间距**：CJK 标题间距 `gap >= px + 14`；文字必须使用 `wrapCN` 控制在容器边界内。
-4. **渲染环境**：锁定 1920×1080，使用本地通用字体栈，零外部 webfont 依赖。
+4. **渲染环境与画质**：逻辑坐标统一为 1920×1080，支持 `--res 4k` 自动进行 Canvas 2D 与矢量字体的高精细光栅化放大，零模糊；零外部 webfont 依赖。

@@ -15,8 +15,8 @@
   #time { font-variant-numeric: tabular-nums; min-width: 120px; text-align: right; color: #8fa3c8; }
   label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .render #ui { display: none; }
-  body.render { background: #000; }
-  .render #stage { width: 1920px; height: 1080px; border-radius: 0; box-shadow: none; }
+  body.render { background: #000; margin: 0; padding: 0; overflow: hidden; display: block; }
+  .render #stage { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; border-radius: 0; box-shadow: none; margin: 0; }
 </style>
 </head>
 <body>

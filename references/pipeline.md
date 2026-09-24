@@ -46,9 +46,11 @@ offsets = 0.6, 6.51, 22.91, 32.23；BEATS = [0–6.51],[6.51–22.91],[22.91–3
 
 ## 渲染说明
 
-- `render.mjs <dir> storyboard`（强烈推荐！）：自动感知 `BEATS` 各幕区间，并在 2 秒内截取每一幕的视觉高潮帧（`out/storyboard/act_*.png`），同时生成 `out/storyboard/index.html` 预览画廊，供用户和创作者直观审查视觉版式与字幕。
+- `render.mjs <dir> storyboard`（强烈推荐！）：自动感知 `BEATS` 各幕区间，并在 2 秒内截取每一幕的视觉高潮帧（`out/storyboard/act_*.png`），同时生成 `out/storyboard/index.html` 预览画廊，供用户和创作者直观审查视觉版式与字幕。支持 `--res 4k`（默认超清）或 `--res 1080p`。
 - `render.mjs <dir> snaps`：用于自定义时间戳抽帧；`--snaps t1,t2` 可指定关键时间点，质检时优先取「转场点 ±0.3s」和「字幕切换点」。
-- `render.mjs <dir> video`：30fps 逐帧截图 → 管道喂给 ffmpeg（libx264 crf 18）。44s 约 1320 帧，耗时约 10–20 分钟（主要花在截图 IPC）。可开 `--fps 24` 提速，肉眼差别不大。
+- `render.mjs <dir> video`：逐帧截图 → 管道喂给 ffmpeg（libx264 crf 18）。
+  - 画质分辨率：支持 `--res 4k`（3840×2160，UHD 超高清）、`--res 2k`（2560×1440）与 `--res 1080p`（1920×1080）。4K 模式会自动启用 BT.709 广色域色彩空间标记。
+  - 帧率选项：支持 `--fps 30`（默认）或 `--fps 24`（电影感且提速 20%）。
 - Chrome 路径：内置跨平台自动探测机制（支持 macOS Chrome/Edge、Linux chrome/chromium、Windows 等）。亦可使用环境变量 `VM_CHROME` 显式覆盖。
 - 端口与资源：默认优先使用 9222 端口，若被占用会自动寻找可用空闲端口；退出或中断时会自动清理临时用户数据目录与 Chrome 进程。
 - 页面必须走 `file://` 协议。使用 `pathToFileURL` 保证跨平台路径正确解析为标准 URL。
