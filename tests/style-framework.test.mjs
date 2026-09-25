@@ -66,6 +66,8 @@ test('comic project loads reusable actors and keeps character, caption, and audi
     assert.equal(style.characters.render, 'sprite');
     assert.ok(readFileSync(join(dir, 'assets', 'comic-duo', 'pose-sheet.png')).length > 100_000);
     assert.match(readFileSync(join(dir, 'STORYBOARD.md'), 'utf8'), /旁白原句/);
+    assert.match(readFileSync(join(dir, 'STORYBOARD.md'), 'utf8'), /画面方法与技术理由/);
+    assert.match(readFileSync(join(dir, 'BUILD.md'), 'utf8'), /references\/creative-production\.md/);
     const CharacterActors = require(join(dir, 'lib', 'characters.js'));
     assert.equal(typeof CharacterActors.actors.bright, 'function');
     assert.equal(typeof CharacterActors.actors.serious, 'function');

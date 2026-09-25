@@ -1,14 +1,16 @@
 ---
 name: "video-maker"
-description: "Create or revise animated explainer videos from articles, text, or scripts with independent, extensible visual styles. Covers style selection, scene design, narration, speech-aligned captions, music, storyboard review, and rendering. Use when making videos or extending the video-maker toolkit."
+description: "Create or revise animated explainer videos from articles, text, or scripts. Select visual styles and scene-specific production tools (Canvas, Remotion, p5.js, Three.js), align narration and captions, review storyboards, and render. Use when making videos or extending the video-maker toolkit."
 ---
 
 # Video Maker · 可扩展多风格视频框架
 
 ## 核心设计理念
-本框架将文章或脚本转化为解说动画视频。核心原则：**内容、风格、字幕、配乐分离；先核对旁白与画面的意思，再确认分镜和全量渲染**。
+本框架将文章或脚本转化为解说动画视频。核心原则：**内容、风格、字幕、配乐和制作技术分离；先核对旁白与画面的意思，再确认分镜和全量渲染**。
 
 每套风格在 `styles/<id>.json` 中独立定义设计理念、画面家族、入退场动效、顶部界面元素、字幕和配乐。`lib/scenes.js` 根据同一份语义场景数据绘制不同构图。新项目复制一份可编辑的 `style.js`，不会因日后改动预设而悄悄改变旧项目。已有 `V.*` 组件与旧项目接口继续可用。扩展新风格时读 [references/styles.md](references/styles.md)。
+
+**每次创作都主动做一次画面方法与制作技术选择**，不等用户提到 Remotion、p5.js 或 Three.js。先为各幕确定要让观众看懂的变化，再选择现有 Canvas、Remotion 的 React/SVG、p5.js 程序化二维画面或 Three.js 空间画面；同一视频可按幕组合。判断标准、组合方式、技术验证和交互输出见 [references/creative-production.md](references/creative-production.md)。技术选择不等于风格选择；不要为展示工具而加无关特效。
 
 在耗费较多时间进行逐帧全量视频渲染之前，先生成**分镜效果图（Storyboard Keyframes）**，让用户预览每一幕的排版、配色、图表和字幕。按反馈修改，确认视觉方案后再全量渲染。字幕应在分镜预览前就按实际配音切成短句，不能把一幕的全部文案塞进一屏。
 
@@ -23,12 +25,13 @@ description: "Create or revise animated explainer videos from articles, text, or
 
 当用户提供一篇文章时，先分析题材特征并与用户对齐风格：
 
-1. **内容特征分析：**
+1. **内容特征分析与表现方式：**
    - **题材调性**：个人成长与哲学认知、系统架构与编程实战、商业战略与产品财经、论文解析与数理逻辑、极客突破等。
    - **核心视觉隐喻**：左右对比分栏（认知误区 vs 核心重构）、关键数据冲击（10x / 92%）、流程步骤（01 → 02 → 03）、概念拓扑（因果回路）、深度名言金句。
+   - **观众需要看到的变化**：比较、因果、筛选、积累、路径、尺度、人物选择等。逐幕决定适合静态排版、二维动态关系还是空间演示，并初选制作技术。具体判断见 [references/creative-production.md](references/creative-production.md)。
 2. **给出 2–3 种画面结构真正不同的候选，而不只换色：** 运行 `node <skill-dir>/bin/style-config.mjs list` 查看风格包。当前有 `minimal_dark`（知识卡片）、`tech_blueprint`（工程图）、`modern_business`（商业简报）、`academic_paper`（学术白板）、`retro_rpg`（游戏任务）、`editorial_ink`（杂志排版）、`kinetic_type`（动感字体）、`warm_story`（温暖叙事）、`comic_duo`（双人黑白漫画）。按题材推荐，不总把深色科技风放在第一位。漫画风的角色与分镜用法见 [references/comic-duo.md](references/comic-duo.md)。
 3. **确认本片的语言选择：** 主动画面文字、解说语言与音色、字幕语言（单语或双语）分别询问；已有明确要求就沿用，不重复追问。不要把某次视频的英文解说或中英双语字幕写成所有项目的默认语言。
-4. **与用户确认风格后进入第二阶段。**
+4. **与用户确认风格后进入第二阶段。** 技术选择由创作团队按分镜目标负责；只有它会显著改变成片形式、成本或交付物时才向用户说明并确认。
 
 ---
 
@@ -36,7 +39,7 @@ description: "Create or revise animated explainer videos from articles, text, or
 
 在生成完整视频之前，**必须先生成分镜效果图供用户预览与确认**：
 
-1. **脚手架与文案提取：**
+1. **脚手架与文案提取：** 先记录本片的风格、场景方法、制作技术和交付形式。现有命令生成的是 **Canvas 2D 项目**；选择 Remotion 等新路径时按 [references/creative-production.md](references/creative-production.md) 建项目专用原型，不把下面的 Canvas 命令误当成已支持的 Remotion 导出。
    ```sh
    node <skill-dir>/bin/new-video.mjs <dir> --title "视频标题" --style <style_id> [--dur 44]
    ```
@@ -47,10 +50,10 @@ description: "Create or revise animated explainer videos from articles, text, or
    python3 <skill-dir>/bin/tts.py --text "第一句解说词。" --out <dir>/audio/n1.mp3
    ffprobe -v error -show_entries format=duration -of csv=p=0 <dir>/audio/n1.mp3
    ```
-   计算并锁定分镜与配音时间轴（`o1 = 0.6`, `o(i+1) = o(i) + d(i) + 0.8`, `DUR = oN + dN + 2.5`），写入 `demo.js` 的 `DUR`、`BEATS`。再依据**最终配音的词/句时间戳**生成独立的 `SUBS`：一句或一个自然停顿对应一条字幕；长句可拆成连续、语义完整的短语。每条字幕只含当前说到的内容，单语一行，双语最多两行。优先使用当前 TTS 提供的时间戳或可靠的语音对齐/转写；人工听校转场、专有名词和片尾。只有无法取得更细时间戳时，才按音频波形与试听手动标注，不按整段平均语速均分。细节见 [references/pipeline.md](references/pipeline.md)。
+   计算并锁定分镜与配音时间轴（`o1 = 0.6`, `o(i+1) = o(i) + d(i) + 0.8`, `DUR = oN + dN + 2.5`）；Canvas 路径写入 `demo.js` 的 `DUR`、`BEATS`，其他路径用同一份实际音频时间数据。再依据**最终配音的词/句时间戳**生成独立的 `SUBS`：一句或一个自然停顿对应一条字幕；长句可拆成连续、语义完整的短语。每条字幕只含当前说到的内容，单语一行，双语最多两行。优先使用当前 TTS 提供的时间戳或可靠的语音对齐/转写；人工听校转场、专有名词和片尾。只有无法取得更细时间戳时，才按音频波形与试听手动标注，不按整段平均语速均分。Canvas 管线细节见 [references/pipeline.md](references/pipeline.md)。
 3. **先写分镜意图，再绘制（Drafting Beats）：**
-   逐幕填写项目 `STORYBOARD.md`：旁白原句与时间、要表达的意思、画面变化、人物与物件的关系、画面短标签、不能暗示的额外结论。按 [references/storyboard-quality.md](references/storyboard-quality.md) 核对。再在 `demo.js` 的 `SCENES` 中写语义内容（`statement`、`contrast`、`steps`、`quote`）；`SceneStyles.draw` 会按选定风格绘制。需要某套风格的新构图时，为其新增场景家族或注册自定义绘制函数，不要把所有项目都套进卡片/终端组件。通用 `V.*` 组件仍可用于局部定制。
-4. **生成全套分镜效果图（Storyboard）：**
+   逐幕填写项目 `STORYBOARD.md`：旁白原句与时间、要表达的意思、画面变化、人物与物件的关系、画面短标签、不能暗示的额外结论，**以及画面方法、技术选择和声音触发的关键动作**。按 [references/storyboard-quality.md](references/storyboard-quality.md) 核对。Canvas 项目再在 `demo.js` 的 `SCENES` 中写语义内容（`statement`、`contrast`、`steps`、`quote`）；`SceneStyles.draw` 会按选定风格绘制。需要某套风格的新构图时，为其新增场景家族或注册自定义绘制函数，不要把所有项目都套进卡片/终端组件。通用 `V.*` 组件仍可用于局部定制。若选择新技术，先做代表性短段样片，确认它在目标环境中能预览、逐帧稳定导出并与字幕同步，再扩展全片。
+4. **生成全套分镜效果图（Storyboard）：** Canvas 项目使用下面的命令；其他技术按同一份分镜时间轴生成关键帧、预览与导出，并保持相同的审查标准。
    ```sh
    node <skill-dir>/bin/render.mjs <dir> storyboard
    # 或在项目目录下直接运行: ./run.sh storyboard
@@ -66,13 +69,15 @@ description: "Create or revise animated explainer videos from articles, text, or
 
 ### 第三阶段：全量渲染与合成交付 (Phase 3: Video Rendering & Muxing)
 
+以下命令是当前 **Canvas 2D** 实现。Remotion 等项目以通过样片验证的项目时间轴和导出流程完成同样的配乐、字幕、画质及音画检查；不要把两套导出命令混用。
+
 1. **配乐与智能混音：**
    ```sh
    node <skill-dir>/bin/make-style-music.mjs <dir> --dur DUR --bounds 0,o2,...,DUR
    node <skill-dir>/bin/make-style-mix.mjs <dir> --offsets o1,o2,... --dur DUR
    # 或在项目目录下运行: ./run.sh music && ./run.sh mix
    ```
-2. **全量视频逐帧渲染：**
+2. **全量视频逐帧渲染：** Canvas 项目使用下面的命令；Remotion 项目使用经短段样片验证的项目导出流程，不能直接调用当前 Canvas 导出器。
    ```sh
    node <skill-dir>/bin/render.mjs <dir> video [--res 4k|2k|1080p] [--fps 30|24]
    # 或在项目目录下运行: ./run.sh video --res 4k --fps 24
@@ -96,3 +101,4 @@ description: "Create or revise animated explainer videos from articles, text, or
 6. **风格必检**：比较候选风格的分镜时，要看构图、字体、动效、界面元素和配乐是否真的不同；不把换色当作新风格。画面应服从内容，而非为了展示组件而加卡片、时间码或游戏元素。
 7. **渲染环境与画质**：逻辑坐标统一为 1920×1080，支持 `--res 4k` 自动进行 Canvas 2D 与矢量字体的高精细光栅化放大，零外部 webfont 依赖。
 8. **调试结果回收**：短段样片发现的通用问题，修到对应风格素材、运行时代码或本 skill 的检查协议；文章专属隐喻留在项目中。避免下一支视频重复试错。
+9. **制作技术决策与复用**：每支新视频至少在分镜中记录一次选用 Canvas、Remotion、p5.js、Three.js 或组合的理由；按画面目标而非工具热度选择。新技术先短段验证、记录依赖与导出条件；验证通过的通用场景封装进框架，不能让下一支视频重新搭同一套管线。交互网页与线性 MP4 是不同交付物，按本片需求决定是否制作。

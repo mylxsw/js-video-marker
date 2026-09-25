@@ -1,5 +1,7 @@
 # 管线详解与故障排查
 
+本页的命令和实现细节适用于当前 Canvas 2D 导出管线。采用 Remotion、p5.js 或 Three.js 时，先按 [creative-production.md](creative-production.md) 选画面方法并验证短段；配音实测、逐句字幕和图文核对原则仍适用。
+
 ## 时间轴锁定（步骤 3 的完整公式）
 
 设 TTS 实测时长为 d1..dN（秒）：

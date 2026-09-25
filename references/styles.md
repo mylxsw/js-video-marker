@@ -11,6 +11,8 @@
 
 `node bin/style-config.mjs list` 列出风格。`node bin/new-video.mjs <dir> --style <id>` 创建独立项目。旧项目的 `V.createApp({theme, drawBeat})` 仍可用；新项目传 `style: VIDEO_STYLE` 和 `SceneStyles.draw(...)`。
 
+风格包描述画面的设计语言，不指定唯一制作引擎。同一风格可用现有 Canvas 实现，也可在经过样片验证的新项目里用 Remotion 编排 React/SVG、p5.js 或 Three.js 场景。字幕、配乐和语言保持独立。每次创作的技术选择规则见 [creative-production.md](creative-production.md)；当前脚手架和导出命令仍只实现 Canvas 2D。
+
 ## 风格包字段
 
 ```json

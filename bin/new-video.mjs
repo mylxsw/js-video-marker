@@ -93,26 +93,27 @@ writeFileSync(join(dir, 'BUILD.md'),
 
 ## 基础信息
 - 视频风格包: \`${styleId}\`（可在 style.js 独立调整画面、动效、字幕、音乐）
+- 当前脚手架: Canvas 2D；若分镜选择 Remotion、p5.js 或 Three.js，先做项目专用短段原型，不把本目录的 Canvas 命令当作新技术导出器
 - 配乐风格预设: \`${style.audio.genre || style.audio.path}\`
 - 视频时长预设: ${dur}s
 - Skill 路径: \`${ROOT}\`
 
 ## 构建步骤
-- [ ] 1. 确认画面、配音、字幕语言及音色；写 script.txt 口语化解说词（数字/缩写按读音写）
+- [ ] 1. 确认画面、配音、字幕语言及音色；按 "${ROOT}/references/creative-production.md" 为各幕选择画面方法和制作技术；写 script.txt 口语化解说词（数字/缩写按读音写）
 - [ ] 2. 分段 TTS → audio/n1..nN.mp3 并测量时长：
        python3 "${ROOT}/bin/tts.py" --text "第一句。" --out audio/n1.mp3
        ffprobe -v error -show_entries format=duration -of csv=p=0 audio/n1.mp3
 - [ ] 3. 由实测时长锁定 DUR/BEATS；再按最终配音的词/句时间戳制作逐句 SUBS（语言按本片要求）
-- [ ] 4. 逐幕填写 STORYBOARD.md：旁白原句、要传达的意思、画面变化、人物与物件的关系、画面短标签、避免误导的内容；再写 demo.js 的 SCENES
+- [ ] 4. 逐幕填写 STORYBOARD.md：旁白原句、要传达的意思、画面方法及技术理由、语音触发的变化、人物与物件的关系、画面短标签、避免误导的内容；Canvas 路径再写 demo.js 的 SCENES；新技术先做短段原型并验证预览、静帧、导出
 - [ ] 5. 程序化配乐：
        node "${ROOT}/bin/make-style-music.mjs" . --dur DUR --bounds 0,b1,b2,...,DUR
 - [ ] 6. 混音：
        node "${ROOT}/bin/make-style-mix.mjs" . --offsets o1,o2,... --dur DUR
-- [ ] 7. 分镜预览与交互修改：对照 STORYBOARD.md 核对意思；抽查每幕进入、关键词、结束、最长字幕与快切处（生成前确认）：
+- [ ] 7. 分镜预览与交互修改：对照 STORYBOARD.md 核对意思；抽查每幕进入、关键词、结束、最长字幕与快切处（生成前确认）。以下命令仅适用于 Canvas 路径：
        node "${ROOT}/bin/render.mjs" . storyboard
        # 或直接运行: ./run.sh storyboard
        # 快速生成 out/storyboard/ 各幕分镜效果图，确认视觉与排版满意
-- [ ] 8. 全量渲染（确认分镜满意后再执行）：
+- [ ] 8. 全量渲染（确认分镜满意后再执行；以下命令仅适用于 Canvas 路径）：
        node "${ROOT}/bin/render.mjs" . video
 - [ ] 9. 合成：
        ffmpeg -y -i out/video.mp4 -i audio/mix.wav -c:v copy -c:a aac -b:a 160k out/final.mp4
